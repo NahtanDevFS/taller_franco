@@ -44,6 +44,16 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
 
   return (
     <aside className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}>
+      <img
+        src="/taller_franco_logo.jpg"
+        alt="Logo Taller Franco"
+        style={{
+          width: "100px",
+          borderRadius: "50%",
+          margin: "0px auto",
+          marginTop: "20px",
+        }}
+      />
       <div className={styles.logoArea}>Taller Franco</div>
       <nav className={styles.nav}>
         {menuItems.map((item) => (

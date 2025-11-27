@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   try {
     // Obtenemos ventas con el nombre del usuario que la hizo
     const sql = `
-      SELECT v.*, u.nombre as vendedor_nombre,
+      SELECT v.*, u.nombre as vendedor_nombre, v.cliente,
       (SELECT COUNT(*) FROM detalle_ventas WHERE venta_id = v.id) as cantidad_items
       FROM ventas v
       LEFT JOIN usuarios u ON v.usuario_id = u.id
@@ -42,14 +42,14 @@ export async function POST(request: Request) {
   const client = await pool.connect();
   try {
     const body = await request.json();
-    const { usuario_id, items, total } = body;
+    const { usuario_id, items, total, cliente } = body;
 
     await client.query("BEGIN");
 
     // crear la nueva venta
     const ventaRes = await client.query(
-      "INSERT INTO ventas (usuario_id, total, estado) VALUES ($1, $2, $3) RETURNING id",
-      [usuario_id, total, "completada"]
+      "INSERT INTO ventas (usuario_id, total, estado, cliente) VALUES ($1, $2, $3, $4) RETURNING id",
+      [usuario_id, total, "completada", cliente || "CF"]
     );
     const ventaId = ventaRes.rows[0].id;
 

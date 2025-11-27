@@ -24,44 +24,41 @@ export default function VentasBateriasPage() {
           background: "white",
           borderRadius: 8,
           marginTop: 20,
+          boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
         }}
       >
         <thead style={{ background: "var(--color-primary)", color: "white" }}>
           <tr>
-            <th style={{ padding: 10, textAlign: "left" }}>Fecha</th>
-            <th style={{ padding: 10, textAlign: "left" }}>Modelo</th>
-            <th style={{ padding: 10, textAlign: "left" }}>Código</th>
-            <th style={{ padding: 10, textAlign: "left" }}>Garantía</th>
-            <th style={{ padding: 10, textAlign: "left" }}>
-              Persona que la compró
-            </th>
-            <th style={{ padding: 10, textAlign: "left" }}>Precio</th>
+            <th style={{ padding: 12, textAlign: "left" }}>Modelo</th>
+            <th style={{ padding: 12, textAlign: "left" }}>Garantía</th>
+            <th style={{ padding: 12, textAlign: "left" }}>Fecha Venta</th>
+            <th style={{ padding: 12, textAlign: "left" }}>Código Único</th>
+            <th style={{ padding: 12, textAlign: "left" }}>Cliente</th>
           </tr>
         </thead>
         <tbody>
           {baterias.map((b) => (
             <tr key={b.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: 10 }}>
+              <td style={{ padding: 12, fontWeight: "bold" }}>
+                {b.modelo_bateria}
+              </td>
+              <td style={{ padding: 12 }}>
+                {b.garantia ? `${b.garantia} Meses` : "-"}
+              </td>
+              <td style={{ padding: 12 }}>
                 {new Date(b.fecha_venta).toLocaleDateString()}
               </td>
-              <td style={{ padding: 10 }}>
-                <b>{b.modelo_bateria}</b>
-                <br />
-                <small style={{ color: "#666" }}>
-                  {b.datos_extra?.codigo_bateria || "-"}
-                </small>
+              <td
+                style={{
+                  padding: 12,
+                  fontFamily: "monospace",
+                  color: "var(--color-primary)",
+                }}
+              >
+                {b.codigo_unico || "N/A"}
               </td>
-              <td style={{ padding: 10 }}>
-                {b.datos_extra?.codigo_bateria || "-"}
-              </td>
-              <td style={{ padding: 10 }}>
-                {b.datos_extra?.garantia_meses
-                  ? `${b.datos_extra.garantia_meses} Meses`
-                  : "-"}
-              </td>
-              <td style={{ padding: 10 }}>{b.vendedor}</td>
-              <td style={{ padding: 10 }}>
-                {formatoQuetzal.format(b.precio_unitario)}
+              <td style={{ padding: 12 }}>
+                {b.nombre_cliente || "Consumidor Final"}
               </td>
             </tr>
           ))}

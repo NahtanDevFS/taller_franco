@@ -11,14 +11,13 @@ export async function GET(request: Request) {
         v.fecha_venta,
         v.id as venta_id,
         p.nombre as modelo_bateria,
-        p.codigo_barras,
         d.precio_unitario,
-        d.datos_extra, 
-        u.nombre as vendedor
+        d.datos_extra->>'garantia_meses' as garantia,
+        d.datos_extra->>'codigo_bateria' as codigo_unico,
+        v.cliente as nombre_cliente
       FROM detalle_ventas d
       JOIN ventas v ON d.venta_id = v.id
       JOIN productos p ON d.producto_id = p.id
-      LEFT JOIN usuarios u ON v.usuario_id = u.id
       WHERE p.es_bateria = true
       ORDER BY v.fecha_venta DESC
     `;

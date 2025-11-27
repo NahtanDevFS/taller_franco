@@ -6,7 +6,7 @@ import { toast, Toaster } from "sonner";
 import { Search, Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-// Interfaces extendidas para el carrito
+// Interfaz para el carrito de ventas
 interface CartItem {
   id: number;
   nombre: string;
@@ -18,7 +18,7 @@ interface CartItem {
   stock_max: number; // Para no vender más de lo que hay
   datos_extra?: {
     garantia_meses: number;
-    codigo_casco?: string;
+    codigo_bateria?: string;
   } | null;
 }
 
@@ -27,11 +27,15 @@ export default function POSPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loadingPay, setLoadingPay] = useState(false);
+  const [clientName, setClientName] = useState("");
 
   // Estado para modal de batería
   const [batteryModalOpen, setBatteryModalOpen] = useState(false);
   const [pendingBattery, setPendingBattery] = useState<any | null>(null);
-  const [warrantyData, setWarrantyData] = useState({ meses: 12, casco: "" });
+  const [warrantyData, setWarrantyData] = useState({
+    meses: 12,
+    codigo_unico: "",
+  });
 
   // Referencia para mantener el foco en el scanner
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -86,7 +90,7 @@ export default function POSPage() {
     // Verificar si es una batería
     if (producto.es_bateria) {
       setPendingBattery(producto);
-      setWarrantyData({ meses: 12, casco: "" }); // Reset
+      setWarrantyData({ meses: 12, codigo_unico: "" }); // Reset
       setBatteryModalOpen(true);
       return;
     }
@@ -168,7 +172,8 @@ export default function POSPage() {
 
     try {
       const payload = {
-        usuario_id: userId, // ID del usuario logueado
+        usuario_id: userId,
+        cliente: clientName || "CF", // Enviamos el cliente
         total: total,
         items: cart.map((item) => ({
           producto_id: item.id,
@@ -191,6 +196,7 @@ export default function POSPage() {
       toast.success("Venta realizada con éxito");
       setCart([]); //limpia el carrito de compras
       setSearchResults([]);
+      setClientName("");
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -251,6 +257,20 @@ export default function POSPage() {
           <small>{new Date().toLocaleDateString()}</small>
         </div>
 
+        <div style={{ padding: "15px 15px 0" }}>
+          <input
+            style={{
+              width: "100%",
+              padding: "10px",
+              borderRadius: 6,
+              border: "1px solid #ccc",
+            }}
+            placeholder="Nombre del Cliente (Opcional)"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+          />
+        </div>
+
         <div className={styles.cartItems}>
           {cart.length === 0 ? (
             <p style={{ textAlign: "center", color: "#999", marginTop: 20 }}>
@@ -269,11 +289,11 @@ export default function POSPage() {
                         color: "var(--color-primary)",
                       }}
                     >
-                      Garantía: {item.datos_extra?.garantia_meses} meses
+                      Garantía: {item.datos_extra?.garantia_meses} m - Cód:{" "}
+                      {item.datos_extra?.codigo_bateria}
                     </div>
                   )}
                 </div>
-
                 <div
                   style={{
                     display: "flex",
@@ -284,7 +304,6 @@ export default function POSPage() {
                   <div style={{ fontWeight: "bold" }}>
                     {formatoQuetzal.format(item.subtotal)}
                   </div>
-
                   <div className={styles.qtyControl}>
                     <button
                       className={styles.qtyBtn}
@@ -365,15 +384,18 @@ export default function POSPage() {
 
             <div style={{ marginBottom: 15 }}>
               <label style={{ display: "block", marginBottom: 5 }}>
-                Código de Casco (Opcional)
+                Código Único (Manual)
               </label>
               <input
                 type="text"
-                value={warrantyData.casco}
+                value={warrantyData.codigo_unico}
                 onChange={(e) =>
-                  setWarrantyData({ ...warrantyData, casco: e.target.value })
+                  setWarrantyData({
+                    ...warrantyData,
+                    codigo_unico: e.target.value,
+                  })
                 }
-                placeholder="Ej: B-12345"
+                placeholder="Escribe el código grabado en la batería"
                 style={{
                   width: "100%",
                   padding: 8,
@@ -402,7 +424,7 @@ export default function POSPage() {
                 onClick={() => {
                   addToCartFinal(pendingBattery, {
                     garantia_meses: warrantyData.meses,
-                    codigo_casco: warrantyData.casco,
+                    codigo_bateria: warrantyData.codigo_unico, // Guardamos como codigo_bateria
                   });
                   setBatteryModalOpen(false);
                 }}
