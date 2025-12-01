@@ -322,35 +322,38 @@ export default function POSPage() {
       <div className={styles.container}>
         <div className={styles.leftPanel}>
           <form onSubmit={handleSearch} className={styles.searchSection}>
-            <input
-              ref={searchInputRef}
-              className={styles.searchInput}
-              placeholder="Código de barras o nombre"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
-            <button type="submit" style={{ display: "none" }}>
-              Buscar
-            </button>
-            <button
-              type="button"
-              onClick={() => setScannerOpen(true)}
-              style={{
-                background: "var(--color-secondary)",
-                border: "none",
-                borderRadius: "var(--border-radius)",
-                color: "white",
-                padding: "0 15px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-              title="Abrir Cámara"
-            >
-              <ScanBarcode size={20} />
-            </button>
+            <p>Pulsa enter para buscar</p>
+            <div className={styles.searchSectionItems}>
+              <input
+                ref={searchInputRef}
+                className={styles.searchInput}
+                placeholder="Código de barras o nombre"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoFocus
+              />
+              <button type="submit" style={{ display: "none" }}>
+                Buscar
+              </button>
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                style={{
+                  background: "var(--color-secondary)",
+                  border: "none",
+                  borderRadius: "var(--border-radius)",
+                  color: "white",
+                  padding: "0 15px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+                title="Abrir Cámara"
+              >
+                <ScanBarcode size={20} />
+              </button>
+            </div>
           </form>
 
           <div className={styles.resultsGrid}>
