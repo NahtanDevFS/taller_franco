@@ -42,7 +42,7 @@ export default function AdminLayout({
 
       {/* Estilo temporal para manejar el responsivo básico del margin-left */}
       <style jsx global>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           div[style*="marginLeft: '250px'"] {
             margin-left: 0 !important;
           }
@@ -50,7 +50,7 @@ export default function AdminLayout({
             display: flex !important;
           }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 1025px) {
           .mobile-header {
             display: none !important;
           }
