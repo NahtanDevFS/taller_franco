@@ -4,7 +4,6 @@ import styles from "./ventas.module.css";
 import { formatoQuetzal } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
 import {
-  Search,
   Trash2,
   Plus,
   Minus,
@@ -323,7 +322,6 @@ export default function POSPage() {
       <div className={styles.container}>
         <div className={styles.leftPanel}>
           <form onSubmit={handleSearch} className={styles.searchSection}>
-            <Search color="var(--color-primary)" />
             <input
               ref={searchInputRef}
               className={styles.searchInput}
@@ -351,7 +349,7 @@ export default function POSPage() {
               }}
               title="Abrir Cámara"
             >
-              <ScanBarcode size={24} />
+              <ScanBarcode size={20} />
             </button>
           </form>
 

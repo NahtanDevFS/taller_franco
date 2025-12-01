@@ -35,7 +35,7 @@ export default function ProductosPage() {
   const [formData, setFormData] = useState(initialFormState);
   const [isManualMarca, setIsManualMarca] = useState(false);
 
-  // FETCH PRODUCTOS (Con filtros)
+  //fetch de los productos con filtros
   const fetchProductos = useCallback(async () => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -51,7 +51,7 @@ export default function ProductosPage() {
     }
   }, [page, searchTerm, filterCategoria, filterMarca]);
 
-  // FETCH METADATA (Categorías y Marcas)
+  //fetch de metadata con categorías y marcas
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -68,7 +68,7 @@ export default function ProductosPage() {
     fetchMetadata();
   }, []);
 
-  // DEBOUNCE SEARCH
+  //debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProductos();
@@ -76,14 +76,14 @@ export default function ProductosPage() {
     return () => clearTimeout(timer);
   }, [fetchProductos]);
 
-  // MANEJO DE COSTO (Fórmula)
+  //manejo del costo para obtener precio de venta
   const handleCostoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const costo = parseFloat(e.target.value) || 0;
     const precioSugerido = calcularPrecioVenta(costo);
     setFormData((prev) => ({ ...prev, costo, precio: precioSugerido }));
   };
 
-  // CAMBIO DE CATEGORÍA (Automático: Batería ID 6)
+  //cambio de categoria siendo automáticamente batería con ID 6
   const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const catId = e.target.value;
     const isBattery = catId === "6"; // ID 6 = Baterías
@@ -440,7 +440,7 @@ export default function ProductosPage() {
 
               <div className={styles.row}>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label className={styles.label}>Costo (Q)</label>
+                  <label className={styles.label}>Costo (Q) sin envío</label>
                   <input
                     type="number"
                     className={styles.input}
