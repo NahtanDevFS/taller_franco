@@ -7,23 +7,56 @@ export async function GET(request: Request) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = 20;
   const offset = (page - 1) * limit;
+  //para filtro por rango de fechas
+  const startDate = searchParams.get("startDate"); // YYYY-MM-DD
+  const endDate = searchParams.get("endDate"); // YYYY-MM-DD
+  const showAnuladas = searchParams.get("showAnuladas") === "true";
 
   try {
-    // Obtenemos ventas con el nombre del usuario que la hizo
+    let filterConditions = [];
+    let filterParams = [];
+    let pCount = 1;
+
+    // Si no se piden anuladas, filtramos solo las completadas y si se piden, no aplicamos filtro de estado se muestran también las anuladas
+    if (!showAnuladas) {
+      filterConditions.push("v.estado = 'completada'");
+    }
+
+    // Construcción dinámica del where
+    if (startDate) {
+      filterConditions.push(`v.fecha_venta >= $${pCount}`);
+      filterParams.push(startDate);
+      pCount++;
+    }
+    if (endDate) {
+      filterConditions.push(`v.fecha_venta <= $${pCount}`);
+      // Agregamos hora final para cubrir todo el día seleccionado
+      filterParams.push(`${endDate} 23:59:59`);
+      pCount++;
+    }
+
+    const whereString =
+      filterConditions.length > 0
+        ? `WHERE ${filterConditions.join(" AND ")}`
+        : "";
+
+    // Query de Datos
     const sql = `
       SELECT v.*, u.nombre as vendedor_nombre, v.cliente,
       (SELECT COUNT(*) FROM detalle_ventas WHERE venta_id = v.id) as cantidad_items
       FROM ventas v
       LEFT JOIN usuarios u ON v.usuario_id = u.id
+      ${whereString}
       ORDER BY v.fecha_venta DESC
-      LIMIT $1 OFFSET $2
+      LIMIT $${pCount} OFFSET $${pCount + 1}
     `;
 
-    const countSql = "SELECT COUNT(*) FROM ventas";
+    // Query de conteo (total para paginación)
+    const countSql = `SELECT COUNT(*) FROM ventas v ${whereString}`;
 
     const [ventasRes, countRes] = await Promise.all([
-      query(sql, [limit, offset]),
-      query(countSql),
+      query(sql, [...filterParams, limit, offset]),
+      query(countSql, filterParams),
     ]);
 
     return NextResponse.json({

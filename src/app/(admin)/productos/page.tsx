@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import styles from "./productos.module.css";
 import { calcularPrecioVenta, formatoQuetzal } from "@/lib/utils";
 import { Toaster, toast } from "sonner";
-import { Search, Filter, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<any[]>([]);
@@ -17,44 +17,41 @@ export default function ProductosPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
-  // Estado para saber si estamos editando (guarda el ID) o creando (null)
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const initialFormState = {
     nombre: "",
     codigo_barras: "",
-    costo: 0, // Solo para cálculo, no se guarda en DB
+    costo: 0,
     precio: 0,
     stock: 0,
     stock_minimo: 5,
     marca_id: "",
     nueva_marca_nombre: "",
     categoria_id: "",
+    es_bateria: false, // Nuevo estado
   };
 
   const [formData, setFormData] = useState(initialFormState);
+  const [isManualMarca, setIsManualMarca] = useState(false);
 
-  const [isManualMarca, setIsManualMarca] = useState(false); //estado para manejar si se va a agregar la marca de forma manual o del listado
-
-  // Usamos useCallback para que la función sea estable
+  // FETCH PRODUCTOS (Con filtros)
   const fetchProductos = useCallback(async () => {
-    // Construimos la URL con parámetros
     const params = new URLSearchParams({
       page: page.toString(),
       q: searchTerm,
       cat: filterCategoria,
       marca: filterMarca,
     });
-
     const res = await fetch(`/api/productos?${params}`);
     const data = await res.json();
-
     if (data.data) {
       setProductos(data.data);
       setTotalPages(data.totalPages);
     }
   }, [page, searchTerm, filterCategoria, filterMarca]);
 
+  // FETCH METADATA (Categorías y Marcas)
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -71,23 +68,29 @@ export default function ProductosPage() {
     fetchMetadata();
   }, []);
 
-  // Efecto para buscar cuando cambian los filtros
+  // DEBOUNCE SEARCH
   useEffect(() => {
-    // Pequeño debounce para el texto: espera 300ms antes de buscar
     const timer = setTimeout(() => {
       fetchProductos();
     }, 300);
     return () => clearTimeout(timer);
   }, [fetchProductos]);
 
+  // MANEJO DE COSTO (Fórmula)
   const handleCostoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const costo = parseFloat(e.target.value) || 0;
     const precioSugerido = calcularPrecioVenta(costo);
+    setFormData((prev) => ({ ...prev, costo, precio: precioSugerido }));
+  };
 
+  // CAMBIO DE CATEGORÍA (Automático: Batería ID 6)
+  const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const catId = e.target.value;
+    const isBattery = catId === "6"; // ID 6 = Baterías
     setFormData((prev) => ({
       ...prev,
-      costo: costo,
-      precio: precioSugerido,
+      categoria_id: catId,
+      es_bateria: isBattery, // Auto-select
     }));
   };
 
@@ -112,13 +115,14 @@ export default function ProductosPage() {
       categoria_id: producto.categoria_id
         ? producto.categoria_id.toString()
         : "",
+      es_bateria: producto.es_bateria || false, // Cargar estado actual
     });
     setIsManualMarca(false);
     setModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
+    if (!confirm("¿Eliminar este producto?")) return;
     const promise = fetch(`/api/productos/${id}`, { method: "DELETE" })
       .then(async (res) => {
         if (!res.ok) {
@@ -148,7 +152,7 @@ export default function ProductosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),
     }).then(async (res) => {
-      if (!res.ok) throw new Error("Error en la operación");
+      if (!res.ok) throw new Error("Error");
       setModalOpen(false);
       fetchProductos();
       return editingId ? "Producto actualizado" : "Producto creado";
@@ -157,7 +161,7 @@ export default function ProductosPage() {
     toast.promise(promise, {
       loading: "Guardando...",
       success: (msg) => `${msg}`,
-      error: "Error",
+      error: "Error al guardar",
     });
   };
 
@@ -174,20 +178,17 @@ export default function ProductosPage() {
 
       <div className={styles.header}>
         <h1 className={styles.title}>Inventario</h1>
-        <button
-          className={styles.btnPrimary}
-          onClick={() => setModalOpen(true)}
-        >
+        <button className={styles.btnPrimary} onClick={openNewModal}>
           + Nuevo Producto
         </button>
       </div>
+
       <div className={styles.filterBar}>
         <div className={styles.searchContainer}>
           <Search size={18} className={styles.searchIcon} />
           <input
-            type="text"
-            placeholder="Buscar por nombre..."
             className={styles.searchInput}
+            placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -195,7 +196,6 @@ export default function ProductosPage() {
             }}
           />
         </div>
-
         <select
           className={styles.filterSelect}
           value={filterCategoria}
@@ -211,7 +211,6 @@ export default function ProductosPage() {
             </option>
           ))}
         </select>
-
         <select
           className={styles.filterSelect}
           value={filterMarca}
@@ -227,17 +226,13 @@ export default function ProductosPage() {
             </option>
           ))}
         </select>
-
         {(searchTerm || filterCategoria || filterMarca) && (
-          <button
-            onClick={clearFilters}
-            className={styles.clearBtn}
-            title="Limpiar filtros"
-          >
+          <button onClick={clearFilters} className={styles.clearBtn}>
             <X size={18} />
           </button>
         )}
       </div>
+
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -256,7 +251,23 @@ export default function ProductosPage() {
               productos.map((p) => (
                 <tr key={p.id}>
                   <td>{p.codigo_barras || "-"}</td>
-                  <td>{p.nombre}</td>
+                  <td>
+                    {p.nombre}
+                    {p.es_bateria && (
+                      <span
+                        style={{
+                          marginLeft: 5,
+                          fontSize: "0.7rem",
+                          background: "#e0f2fe",
+                          color: "#0284c7",
+                          padding: "2px 5px",
+                          borderRadius: 4,
+                        }}
+                      >
+                        Batería
+                      </span>
+                    )}
+                  </td>
                   <td>{p.categoria_nombre || "-"}</td>
                   <td>{p.marca_nombre || "Genérico"}</td>
                   <td
@@ -283,11 +294,8 @@ export default function ProductosPage() {
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={7}
-                  style={{ textAlign: "center", padding: 20, color: "#666" }}
-                >
-                  No se encontraron productos con estos filtros.
+                <td colSpan={7} style={{ textAlign: "center", padding: 20 }}>
+                  No se encontraron productos.
                 </td>
               </tr>
             )}
@@ -295,7 +303,6 @@ export default function ProductosPage() {
         </table>
       </div>
 
-      {/* Paginación */}
       <div
         style={{
           marginTop: 10,
@@ -324,7 +331,6 @@ export default function ProductosPage() {
             <h2 style={{ color: "var(--color-secondary)", marginTop: 0 }}>
               {editingId ? "Editar Producto" : "Agregar Producto"}
             </h2>
-
             <form onSubmit={handleSubmit}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Nombre del Repuesto</label>
@@ -359,9 +365,7 @@ export default function ProductosPage() {
                     className={styles.input}
                     required
                     value={formData.categoria_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, categoria_id: e.target.value })
-                    }
+                    onChange={handleCategoriaChange}
                   >
                     <option value="">Seleccionar...</option>
                     {categorias.map((c) => (
@@ -374,8 +378,24 @@ export default function ProductosPage() {
               </div>
 
               <div className={styles.formGroup}>
+                <label
+                  className={styles.label}
+                  style={{ display: "flex", alignItems: "center", gap: 10 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.es_bateria}
+                    onChange={(e) =>
+                      setFormData({ ...formData, es_bateria: e.target.checked })
+                    }
+                  />
+                  Es batería
+                </label>
+              </div>
+
+              <div className={styles.formGroup}>
                 <label className={styles.label}>
-                  Marca
+                  Marca{" "}
                   <small
                     style={{
                       color: "var(--color-primary)",
@@ -387,7 +407,6 @@ export default function ProductosPage() {
                     ({isManualMarca ? "Seleccionar existente" : "Crear nueva"})
                   </small>
                 </label>
-
                 {isManualMarca ? (
                   <input
                     className={styles.input}
@@ -427,15 +446,10 @@ export default function ProductosPage() {
                     className={styles.input}
                     min="0"
                     step="0.01"
-                    value={formData.costo || ""} // Para que no muestre 0 si está vacío
+                    value={formData.costo || ""}
                     placeholder={editingId ? "Opcional" : "0.00"}
                     onChange={handleCostoChange}
                   />
-                  {editingId && (
-                    <small style={{ color: "#888" }}>
-                      Editar para recalcular precio
-                    </small>
-                  )}
                 </div>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
                   <label className={styles.label}>Precio Venta (Q)</label>
@@ -451,9 +465,6 @@ export default function ProductosPage() {
                       })
                     }
                   />
-                  <small style={{ color: "#888" }}>
-                    Calculado: Costo + 35% + 20 (Redondeado)
-                  </small>
                 </div>
               </div>
 

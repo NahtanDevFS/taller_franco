@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import { Menu } from "lucide-react"; // Icono de hamburguesa
+import styles from "./layout.module.css";
 
 export default function AdminLayout({
   children,
@@ -11,32 +12,14 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className={styles.container}>
       {/* 1. El Sidebar */}
       <Sidebar isOpen={sidebarOpen} closeMobile={() => setSidebarOpen(false)} />
 
       {/* 2. El Contenido Principal */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          marginLeft: "250px",
-        }}
-      >
-        {/* Nota: marginLeft 250px deja espacio al sidebar en Desktop. En móvil deberíamos quitarlo con CSS media queries, pero por ahora funcionará en PC */}
-
-        {/* Barra superior móvil (Visible solo en móvil) */}
-        <header
-          style={{
-            padding: "10px",
-            background: "white",
-            borderBottom: "1px solid #eee",
-            display: "flex",
-            alignItems: "center",
-          }}
-          className="mobile-header"
-        >
+      <div className={styles.mainContent}>
+        {/*barra superior móvil (visible solo en móvil) */}
+        <header className={styles.mobileHeader}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             style={{
@@ -54,11 +37,7 @@ export default function AdminLayout({
         </header>
 
         {/* Aquí se renderiza la página que esté visible (Productos, Ventas, etc) */}
-        <main
-          style={{ padding: "20px", flex: 1, background: "var(--color-bg)" }}
-        >
-          {children}
-        </main>
+        <main className={styles.contentBody}>{children}</main>
       </div>
 
       {/* Estilo temporal para manejar el responsivo básico del margin-left */}

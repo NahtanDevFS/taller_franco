@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./login.module.css";
-import { Lock, User } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();

@@ -48,11 +48,32 @@
   border-left: 4px solid var(--color-primary);
 }
 
-@media (max-width: 768px) {
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: right;
+  padding: 6px 20px;
+  color: #e2e8f0;
+  cursor: pointer;
+  background-color: var(--color-secondary);
+  text-decoration: none;
+  border: none;
+}
+
+@media (max-width: 1024px) {
   .sidebar {
     transform: translateX(-100%);
   }
   .sidebar.open {
     transform: translateX(0);
+  }
+  .link {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .sidebar {
+    width: 210px;
   }
 }

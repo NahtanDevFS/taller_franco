@@ -3,10 +3,25 @@ import { pool } from "@/lib/db";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+
+  //Si piden "all_batteries", devolvemos lista simple para el Select
+  const allBatteries = searchParams.get("type") === "all_batteries";
+
+  if (allBatteries) {
+    try {
+      const res = await pool.query(
+        "SELECT id, nombre, precio, stock FROM productos WHERE es_bateria = true ORDER BY nombre ASC"
+      );
+      return NextResponse.json(res.rows);
+    } catch (error: any) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
   const page = parseInt(searchParams.get("page") || "1");
-  const search = searchParams.get("q") || ""; // Búsqueda por nombre
-  const categoriaId = searchParams.get("cat") || ""; // Filtro Categoría
-  const marcaId = searchParams.get("marca") || ""; // Filtro Marca
+  const search = searchParams.get("q") || "";
+  const categoriaId = searchParams.get("cat") || "";
+  const marcaId = searchParams.get("marca") || "";
   const limit = 20;
   const offset = (page - 1) * limit;
 
@@ -15,32 +30,25 @@ export async function GET(request: Request) {
     let values = [];
     let paramCounter = 1;
 
-    // Filtro por nombre (ILIKE es insensible a mayúsculas/minúsculas)
     if (search) {
       whereClauses.push(`p.nombre ILIKE $${paramCounter}`);
       values.push(`%${search}%`);
       paramCounter++;
     }
-
-    // Filtro por categoría
     if (categoriaId) {
       whereClauses.push(`p.categoria_id = $${paramCounter}`);
       values.push(categoriaId);
       paramCounter++;
     }
-
-    // filtro por marca
     if (marcaId) {
       whereClauses.push(`p.marca_id = $${paramCounter}`);
       values.push(marcaId);
       paramCounter++;
     }
 
-    // Unir cláusulas (si hay filtros, agregamos 'WHERE ...', si no, string vacío)
     const whereString =
       whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    // query principal donde agregamos los parámetros de limit/offset al final del array de valores
     const sql = `
       SELECT p.*, m.nombre as marca_nombre, c.nombre as categoria_nombre 
       FROM productos p
@@ -51,18 +59,9 @@ export async function GET(request: Request) {
       LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
     `;
 
-    // consulta de conteo para paginación
-    const countSql = `
-      SELECT COUNT(*) 
-      FROM productos p 
-      ${whereString}
-    `;
+    const countSql = `SELECT COUNT(*) FROM productos p ${whereString}`;
 
-    // Ejecutamos ambas consultas
-    // Para la principal necesitamos values + limit + offset
     const queryValues = [...values, limit, offset];
-
-    // Para el count solo necesitamos los values de los filtros
     const countValues = [...values];
 
     const [productosRes, countRes] = await Promise.all([
@@ -103,18 +102,18 @@ export async function POST(request: Request) {
       marca_id,
       nueva_marca_nombre,
       categoria_id,
+      es_bateria,
     } = body;
 
-    // Limpiar Código de Barras: Si es "", lo volvemos NULL para no romper la restricción UNIQUE
+    //limpiar código de barras: si es "", lo volvemos NULL para no romper la restricción UNIQUE
     const finalCodigo =
       codigo_barras && codigo_barras.trim() !== "" ? codigo_barras : null;
 
-    // Limpiar Categoría: Si es "", lo volvemos NULL para no romper el tipo INT
+    // Limpiar categoría si es "", lo volvemos NULL para no romper el tipo INT
     const finalCategoriaId =
       categoria_id && categoria_id !== "" ? parseInt(categoria_id) : null;
 
-    // Definir Marca ID inicial
-    // Si viene marca_id lo convertimos a entero, si no, null
+    // Definir marca ID inicial y si viene marca_id lo convertimos a entero, si no, null
     let finalMarcaId = marca_id && marca_id !== "" ? parseInt(marca_id) : null;
 
     await client.query("BEGIN");
@@ -128,10 +127,10 @@ export async function POST(request: Request) {
       );
 
       if (checkMarca.rows.length > 0) {
-        // Si ya existe usamos esa
+        //Si ya existe usamos esa
         finalMarcaId = checkMarca.rows[0].id;
       } else {
-        // Si no existe, la creamos
+        //Si no existe, la creamos
         const marcaRes = await client.query(
           "INSERT INTO marcas (nombre) VALUES ($1) RETURNING id",
           [nueva_marca_nombre]
@@ -140,22 +139,23 @@ export async function POST(request: Request) {
       }
     }
 
-    // query para insertar el producto
+    //query para insertar el producto
     const insertSql = `
       INSERT INTO productos 
-      (nombre, codigo_barras, precio, stock, stock_minimo, marca_id, categoria_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (nombre, codigo_barras, precio, stock, stock_minimo, marca_id, categoria_id, es_bateria)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
 
     const res = await client.query(insertSql, [
       nombre,
-      finalCodigo, // Ahora es string o NULL
+      finalCodigo,
       precio,
       stock,
       stock_minimo,
-      finalMarcaId, // Ahora es int o NULL
-      finalCategoriaId, // Ahora es int o NULL
+      finalMarcaId,
+      finalCategoriaId,
+      es_bateria || false,
     ]);
 
     await client.query("COMMIT");

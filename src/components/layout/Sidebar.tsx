@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import styles from "./Sidebar.module.css";
+import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   Package,
   ShoppingCart,
   BatteryCharging,
   LogOut,
+  X,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -18,6 +20,8 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
   const pathname = usePathname();
+  const supabase = createClient();
+  const router = useRouter();
 
   const menuItems = [
     {
@@ -42,8 +46,22 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
     },
   ];
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      throw error;
+    }
+
+    router.refresh();
+    router.push("/login");
+  };
+
   return (
     <aside className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}>
+      <button className={styles.closeButton} onClick={closeMobile}>
+        <X size={32} />
+      </button>
       <img
         src="/taller_franco_logo.jpg"
         alt="Logo Taller Franco"
@@ -51,7 +69,7 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
           width: "100px",
           borderRadius: "50%",
           margin: "0px auto",
-          marginTop: "20px",
+          marginTop: "0px",
         }}
       />
       <div className={styles.logoArea}>Taller Franco</div>
@@ -71,10 +89,7 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
         ))}
       </nav>
       <div className={styles.nav}>
-        <button
-          className={styles.link}
-          onClick={() => alert("Cerrar sesión logic aquí")}
-        >
+        <button className={styles.link} onClick={handleLogout}>
           <LogOut size={20} style={{ marginRight: "10px" }} />
           Salir
         </button>

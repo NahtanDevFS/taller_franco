@@ -19,6 +19,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       marca_id,
       nueva_marca_nombre,
       categoria_id,
+      es_bateria,
     } = body;
 
     // Limpieza de datos (igual que en POST)
@@ -56,8 +57,9 @@ export async function PUT(request: Request, { params }: { params: Params }) {
         stock = $4, 
         stock_minimo = $5, 
         marca_id = $6, 
-        categoria_id = $7
-      WHERE id = $8
+        categoria_id = $7,
+        es_bateria = $8
+      WHERE id = $9
       RETURNING *
     `;
 
@@ -69,6 +71,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       stock_minimo,
       finalMarcaId,
       finalCategoriaId,
+      es_bateria || false,
       id,
     ]);
 
