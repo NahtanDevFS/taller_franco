@@ -1,3 +1,6 @@
+.titleVentas {
+  font-size: 1.5rem;
+}
 @media (max-width: 900px) {
   .titleVentas {
     font-size: 18px;

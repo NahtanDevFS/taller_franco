@@ -43,7 +43,13 @@ export default function DashboardPage() {
   if (!stats) return <div style={{ padding: 20 }}>Cargando Dashboard...</div>;
   return (
     <div style={{ padding: 20 }}>
-      <h1 style={{ color: "var(--color-secondary)", marginBottom: 20 }}>
+      <h1
+        style={{
+          color: "var(--color-secondary)",
+          marginBottom: 20,
+          fontSize: "1.5rem",
+        }}
+      >
         Dashboard general
       </h1>
 
