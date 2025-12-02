@@ -5,6 +5,7 @@ import { Toaster, toast } from "sonner";
 import { Pencil, Trash2, X, Search, Filter } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "../../productos/productos.module.css";
+import stylesHistorial from "../historialVentas.module.css";
 
 export default function VentasBateriasPage() {
   const [baterias, setBaterias] = useState<any[]>([]);
@@ -193,7 +194,7 @@ export default function VentasBateriasPage() {
 
       <div className={styles.header}>
         <h1
-          className={styles.title}
+          className={stylesHistorial.titleVentas}
           style={{ color: "var(--color-secondary)" }}
         >
           Gestión de Baterías

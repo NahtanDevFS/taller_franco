@@ -23,6 +23,10 @@
   flex-direction: column;
 }
 
+.searchSection p {
+  margin: 5px;
+}
+
 .searchSectionItems {
   background: white;
   border-radius: var(--border-radius);
@@ -203,7 +207,7 @@
     left: 0;
     right: 0;
     height: auto;
-    max-height: 45vh;
+    max-height: 62vh;
     border-radius: 20px 20px 0 0;
     z-index: 100;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
@@ -214,5 +218,17 @@
   }
   .searchInput {
     font-size: 0.9rem;
+  }
+
+  .cartItems {
+    padding: 10px;
+  }
+
+  .cartHeader {
+    padding: 10px;
+  }
+
+  .cartHeader h2 {
+    margin-bottom: 10px;
   }
 }

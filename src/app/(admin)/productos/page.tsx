@@ -314,7 +314,7 @@ export default function ProductosPage() {
         <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
           &lt; Anterior
         </button>
-        <span>
+        <span style={{ fontWeight: "bold", color: "#64748b" }}>
           Página {page} de {totalPages}
         </span>
         <button

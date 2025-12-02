@@ -1,0 +1,8 @@
+@media (max-width: 900px) {
+  .titleVentas {
+    font-size: 18px;
+  }
+  .buttonPOS {
+    font-size: 0.75rem !important;
+  }
+}

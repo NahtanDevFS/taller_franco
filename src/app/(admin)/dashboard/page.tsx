@@ -44,7 +44,7 @@ export default function DashboardPage() {
   return (
     <div style={{ padding: 20 }}>
       <h1 style={{ color: "var(--color-secondary)", marginBottom: 20 }}>
-        Dashboard General
+        Dashboard general
       </h1>
 
       {/* sección de los KPIs */}

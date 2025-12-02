@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import styles from "../productos/productos.module.css";
+import stylesHistorial from "./historialVentas.module.css";
 
 export default function HistorialVentasPage() {
   const [ventas, setVentas] = useState<any[]>([]);
@@ -209,11 +210,15 @@ export default function HistorialVentasPage() {
           marginBottom: 20,
         }}
       >
-        <h1 style={{ color: "var(--color-secondary)", margin: 0 }}>
-          Historial de Ventas
+        <h1
+          className={stylesHistorial.titleVentas}
+          style={{ color: "var(--color-secondary)", margin: 0 }}
+        >
+          Historial de ventas
         </h1>
         <Link href="/ventas/nueva" style={{ textDecoration: "none" }}>
           <button
+            className={stylesHistorial.buttonPOS}
             style={{
               backgroundColor: "var(--color-primary)",
               color: "white",

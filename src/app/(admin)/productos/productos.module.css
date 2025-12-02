@@ -46,11 +46,13 @@
   background-color: var(--color-secondary);
   color: white;
   padding: 12px;
+  font-size: 16px;
 }
 
 .table td {
   padding: 12px;
   border-bottom: 1px solid #eee;
+  font-size: 16px;
 }
 
 .lowStock {
@@ -184,4 +186,14 @@
 
 .btnDelete {
   color: #ef4444;
+}
+
+@media (max-width: 900px) {
+  .table th {
+    font-size: 14px;
+  }
+
+  .table td {
+    font-size: 14px;
+  }
 }
