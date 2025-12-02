@@ -85,7 +85,7 @@ export async function DELETE(req: Request, { params }: { params: Params }) {
   }
 }
 
-// PUT: Agregar items a una venta existente
+// PUT para agregar items a una venta existente
 export async function PUT(req: Request, { params }: { params: Params }) {
   const client = await pool.connect();
   const { id } = await params;
@@ -138,6 +138,40 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
     await client.query("COMMIT");
     return NextResponse.json({ message: "Productos agregados a la venta" });
+  } catch (error: any) {
+    await client.query("ROLLBACK");
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}
+
+// PATCH para actualizar el estado de una venta, este puede ser de pendiente a completada
+export async function PATCH(request: Request, { params }: { params: Params }) {
+  const { id } = await params;
+  const client = await pool.connect();
+
+  try {
+    const body = await request.json();
+    const { estado } = body;
+
+    if (!estado) {
+      return NextResponse.json({ error: "Estado requerido" }, { status: 400 });
+    }
+
+    await client.query("BEGIN");
+
+    const res = await client.query(
+      "UPDATE ventas SET estado = $1 WHERE id = $2 RETURNING *",
+      [estado, id]
+    );
+
+    if (res.rowCount === 0) {
+      throw new Error("Venta no encontrada");
+    }
+
+    await client.query("COMMIT");
+    return NextResponse.json(res.rows[0]);
   } catch (error: any) {
     await client.query("ROLLBACK");
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -15,6 +15,7 @@ import {
   Save,
   Filter,
   X,
+  Banknote,
 } from "lucide-react";
 import styles from "../productos/productos.module.css";
 import stylesHistorial from "./historialVentas.module.css";
@@ -87,6 +88,33 @@ export default function HistorialVentasPage() {
           setTotalPages(data.totalPages);
         }
       });
+  };
+
+  const handlePagar = async (venta: any) => {
+    if (
+      !confirm(
+        `¿Confirmar pago de la venta #${venta.id} por ${formatoQuetzal.format(
+          venta.total
+        )}?`
+      )
+    )
+      return;
+
+    toast.promise(
+      fetch(`/api/ventas/${venta.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "completada" }),
+      }).then(async (res) => {
+        if (!res.ok) throw new Error("Error al procesar");
+        fetchVentas(); // Recargar la tabla
+      }),
+      {
+        loading: "Procesando pago...",
+        success: "Pago registrado exitosamente",
+        error: "Error al registrar pago",
+      }
+    );
   };
 
   const handleAnular = async (id: number) => {
@@ -379,8 +407,21 @@ export default function HistorialVentasPage() {
                         borderRadius: 4,
                         fontSize: "0.85rem",
                         background:
-                          v.estado === "anulada" ? "#fee2e2" : "#dcfce7",
-                        color: v.estado === "anulada" ? "#ef4444" : "#166534",
+                          v.estado === "anulada"
+                            ? "#fee2e2"
+                            : v.estado === "pendiente"
+                            ? "#fef9c3"
+                            : "#dcfce7",
+                        color:
+                          v.estado === "anulada"
+                            ? "#ef4444"
+                            : v.estado === "pendiente"
+                            ? "#854d0e"
+                            : "#166534",
+                        border:
+                          v.estado === "pendiente"
+                            ? "1px solid #fde047"
+                            : "none",
                       }}
                     >
                       {v.estado?.toUpperCase()}
@@ -400,6 +441,21 @@ export default function HistorialVentasPage() {
                     >
                       <Eye size={18} />
                     </button>
+                    {v.estado === "pendiente" && (
+                      <button
+                        onClick={() => handlePagar(v)}
+                        title="Registrar Pago"
+                        style={{
+                          marginRight: 10,
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#16a34a", // Verde
+                        }}
+                      >
+                        <Banknote size={18} />
+                      </button>
+                    )}
                     {v.estado !== "anulada" && (
                       <button
                         onClick={() => handleAnular(v.id)}

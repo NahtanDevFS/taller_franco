@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     // Si no se piden anuladas, filtramos solo las completadas y si se piden, no aplicamos filtro de estado se muestran también las anuladas
     if (!showAnuladas) {
-      filterConditions.push("v.estado = 'completada'");
+      filterConditions.push("v.estado IN ('completada', 'pendiente')");
     }
 
     // Construcción dinámica del where
@@ -75,14 +75,16 @@ export async function POST(request: Request) {
   const client = await pool.connect();
   try {
     const body = await request.json();
-    const { usuario_id, items, total, cliente } = body;
+    const { usuario_id, items, total, cliente, estado } = body;
 
     await client.query("BEGIN");
+
+    const estadoFinal = estado || "completada";
 
     // crear la nueva venta
     const ventaRes = await client.query(
       "INSERT INTO ventas (usuario_id, total, estado, cliente) VALUES ($1, $2, $3, $4) RETURNING id",
-      [usuario_id, total, "completada", cliente || "CF"]
+      [usuario_id, total, estadoFinal, cliente || "CF"]
     );
     const ventaId = ventaRes.rows[0].id;
 

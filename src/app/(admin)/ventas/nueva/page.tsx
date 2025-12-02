@@ -36,6 +36,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loadingPay, setLoadingPay] = useState(false);
   const [clientName, setClientName] = useState("");
+  const [isPending, setIsPending] = useState(false);
 
   // Estado para modal de batería
   const [batteryModalOpen, setBatteryModalOpen] = useState(false);
@@ -280,6 +281,7 @@ export default function POSPage() {
         usuario_id: userId,
         cliente: clientName || "CF", //Enviamos el cliente
         total: total,
+        estado: isPending ? "pendiente" : "completada",
         items: cart.map((item) => ({
           producto_id: item.id,
           cantidad: item.cantidad,
@@ -486,12 +488,46 @@ export default function POSPage() {
               <span>Total</span>
               <span>{formatoQuetzal.format(total)}</span>
             </div>
+            <div
+              style={{
+                marginBottom: 15,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                id="pendingCheck"
+                checked={isPending}
+                onChange={(e) => setIsPending(e.target.checked)}
+                style={{ width: 20, height: 20, cursor: "pointer" }}
+              />
+              <label
+                htmlFor="pendingCheck"
+                style={{
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  color: isPending ? "#eab308" : "#64748b",
+                }}
+              >
+                {isPending ? "Venta Pendiente de Pago" : "Cobro Inmediato"}
+              </label>
+            </div>
             <button
               className={styles.payButton}
               onClick={handlePay}
               disabled={cart.length === 0 || loadingPay}
+              // Cambiamos el color si es pendiente para que sea visualmente obvio
+              style={{
+                background: isPending ? "#eab308" : "var(--color-primary)",
+              }}
             >
-              {loadingPay ? "Procesando..." : "Cobrar"}
+              {loadingPay
+                ? "Procesando..."
+                : isPending
+                ? "Guardar Pendiente"
+                : "Cobrar"}
             </button>
           </div>
         </div>
