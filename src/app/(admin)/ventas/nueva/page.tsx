@@ -511,7 +511,7 @@ export default function POSPage() {
                   color: isPending ? "#eab308" : "#64748b",
                 }}
               >
-                {isPending ? "Venta Pendiente de Pago" : "Cobro Inmediato"}
+                {isPending ? "Cobro inmediato" : "Venta pendiente de pago"}
               </label>
             </div>
             <button
