@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-// Importamos los tipos que definimos antes para mantener el orden
-import { Producto } from "@/types/database";
+//importamos los tipos que definimos antes para mantener el orden
+//import { Producto } from "@/types/database";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -15,11 +15,6 @@ export async function GET(request: Request) {
   }
 
   try {
-    // SQL PURO
-    // Nota el uso de $1. Esto es una "Consulta Parametrizada".
-    // NUNCA concatenes strings directamente (ej: ...WHERE codigo = ' + codigo)
-    // porque te hackearían con SQL Injection. El driver `pg` maneja esto seguro.
-
     const sql = `
       SELECT 
         p.*, 
@@ -40,7 +35,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // result.rows es un array, tomamos el primero
     const productoEncontrado = result.rows[0];
 
     return NextResponse.json(productoEncontrado);

@@ -16,8 +16,8 @@ export async function PUT(req: Request, { params }: { params: Params }) {
       fecha_venta,
       cliente,
       venta_id,
-      producto_id, // Nuevo ID de producto
-      precio, // Nuevo precio
+      producto_id, //nuevo ID de producto
+      precio, //nuevo precio
     } = body;
 
     await client.query("BEGIN");

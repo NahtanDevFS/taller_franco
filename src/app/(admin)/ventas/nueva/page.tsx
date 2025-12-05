@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import styles from "./ventas.module.css";
 import { formatoQuetzal } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
@@ -8,6 +9,7 @@ import {
   Plus,
   Minus,
   ShoppingCart,
+  Save,
   Battery,
   ScanBarcode,
 } from "lucide-react";
@@ -27,18 +29,25 @@ interface CartItem {
   datos_extra?: {
     garantia_meses: number;
     codigo_bateria?: string;
+    descripcion_personalizada?: string;
+    es_item_libre?: boolean;
   } | null;
 }
 
 export default function POSPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const editId = searchParams.get("id"); //ID si se está editando
+
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loadingPay, setLoadingPay] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [clientName, setClientName] = useState("");
   const [isPending, setIsPending] = useState(false);
 
-  // Estado para modal de batería
+  //estado para modal de batería
   const [batteryModalOpen, setBatteryModalOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -48,13 +57,21 @@ export default function POSPage() {
     codigo_unico: "",
   });
 
+  //estado para modal de concepto libre
+  const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
+  const [customItemData, setCustomItemData] = useState({
+    tipo: "servicio", //servicio o tercero
+    descripcion: "",
+    precio: "",
+  });
+
   //índice del producto que se está editando en el carrito (null si es nuevo)
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
 
-  // Referencia para mantener el foco en el scanner
+  //referencia para mantener el foco en el scanner
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Obtener usuario actual para saber quien hizo la venta
+  //obtener usuario actual para saber quien hizo la venta
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,12 +81,57 @@ export default function POSPage() {
       if (data.user) setUserId(data.user.id);
     };
     getUser();
-    searchInputRef.current?.focus(); // Auto foco al entrar
+    searchInputRef.current?.focus(); //auto foco al entrar
   }, []);
 
-  // Lógica común para buscar código (ya sea por teclado o cámara)
+  //lógica para cargar una venta para poder editarla
+  useEffect(() => {
+    if (editId) {
+      cargarVentaExistente(editId);
+    }
+  }, [editId]);
+
+  const cargarVentaExistente = async (id: string) => {
+    setIsLoadingData(true);
+    try {
+      const res = await fetch(`/api/ventas/${id}`);
+      if (!res.ok) throw new Error("No se pudo cargar la venta");
+
+      const data = await res.json();
+
+      //primero se carga el cliente y su estado
+      setClientName(data.cliente || "");
+      setIsPending(data.estado === "pendiente");
+
+      //ahora los datos del detalle de la venta se transforman para mostrarse en el carrito
+      const itemsFormateados = data.detalles.map((d: any) => ({
+        id: d.producto_id,
+        //usamos la descripción personalizada o nombre del producto (puede ser null)
+        nombre: d.datos_extra?.descripcion_personalizada
+          ? d.datos_extra.descripcion_personalizada.toUpperCase()
+          : d.producto_nombre,
+        codigo_barras: d.codigo_barras,
+        precio: parseFloat(d.precio_unitario),
+        cantidad: d.cantidad,
+        subtotal: parseFloat(d.subtotal),
+        es_bateria: !!d.datos_extra?.garantia_meses,
+        //en edición simplificamos el stock max visual para no bloquear al usuario ya que la validación real se hará en el backend al guardar
+        stock_max: 9999,
+        datos_extra: d.datos_extra,
+      }));
+
+      setCart(itemsFormateados);
+    } catch (error) {
+      toast.error("Error cargando venta para editar");
+      router.push("/ventas");
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  //lógica común para buscar código (ya sea por teclado o cámara)
   const processCodeSearch = async (code: string) => {
-    // 1. Buscar coincidencia exacta
+    //buscar coincidencia exacta
     const resExact = await fetch(`/api/productos/buscar-codigo?codigo=${code}`);
 
     if (resExact.ok) {
@@ -93,11 +155,11 @@ export default function POSPage() {
     if (resExact.ok) {
       const producto = await resExact.json();
       addItemToCart(producto);
-      setQuery(""); //Limpiar el input para siguiente escaneo
+      setQuery(""); //limpia el input para siguiente escaneo
       return;
     }
 
-    // Si no es código exacto, buscamos por nombre del producto ((like)
+    //si no es código exacto, buscamos por nombre del producto ((like)
     const resSearch = await fetch(`/api/productos?q=${query}&page=1`);
     const dataSearch = await resSearch.json();
     if (dataSearch.data && dataSearch.data.length > 0) {
@@ -108,19 +170,19 @@ export default function POSPage() {
     }
   };
 
-  // Callback cuando la cámara detecta algo
+  //callback cuando la cámara detecta algo
   const handleScanDetected = async (code: string) => {
-    setScannerOpen(false); // Cerramos el modal de cámara
-    toast.info(`Código detectado: ${code}`); // Feedback visual rápido
+    setScannerOpen(false); //cerramos el modal de cámara
+    toast.info(`Código detectado: ${code}`); //feedback visual rápido
 
     const found = await processCodeSearch(code);
     if (!found) {
-      // Si no es un código exacto, intentamos buscarlo como texto por si acaso
+      //si no es un código exacto, intentamos buscarlo como texto por si acaso
       setQuery(code);
       toast.warning(
         "Código no registrado exactamente. Buscando coincidencias..."
       );
-      // Disparamos búsqueda por nombre/texto
+      //disparamos búsqueda por nombre/texto
       const resSearch = await fetch(`/api/productos?q=${code}&page=1`);
       const dataSearch = await resSearch.json();
       if (dataSearch.data && dataSearch.data.length > 0) {
@@ -132,19 +194,19 @@ export default function POSPage() {
   };
 
   const addItemToCart = (producto: any) => {
-    // Verificar Stock
-    if (producto.stock <= 0) {
+    //verificar stock solo si no estoy en modo edición
+    if (!editId && producto.tipo === "producto" && producto.stock <= 0) {
       toast.error(`¡Sin stock! ${producto.nombre} está agotado.`);
       return;
     }
 
-    //Si es batería por defecto, abre el modal como "Nuevo Item"
+    //si es batería por defecto, abre el modal como "nuevo item"
     if (producto.es_bateria) {
       openBatteryModal(producto, null);
       return;
     }
 
-    //Agregar al carrito normal
+    //agregar al carrito normal
     addToCartFinal(producto);
   };
 
@@ -160,7 +222,7 @@ export default function POSPage() {
         codigo_unico: item.datos_extra?.codigo_bateria || "",
       });
     } else {
-      //Si es nuevo, defaults
+      //si es nuevo, defaults
       setWarrantyData({ meses: 12, codigo_unico: "" });
     }
 
@@ -175,7 +237,7 @@ export default function POSPage() {
       codigo_bateria: warrantyData.codigo_unico,
     };
 
-    // Si estamos editando un producto que ya está en el carrito
+    //si estamos editando un producto que ya está en el carrito
     if (editingCartIndex !== null) {
       setCart((prev) =>
         prev.map((item, i) => {
@@ -204,27 +266,34 @@ export default function POSPage() {
 
   const addToCartFinal = (producto: any, extraData: any = null) => {
     setCart((prev) => {
-      //Si es batería (tiene extraData), no agrupamos por cantidad, porque cada batería tiene un código único
       const isBattery = !!extraData || producto.es_bateria;
-      const existing = prev.find((item) => item.id === producto.id);
+      // Usamos el id y si tiene datos extra para diferenciar items iguales y si es item libre, también queremos agruparlo si tiene la misma descripción
+      const existingIndex = prev.findIndex(
+        (item) =>
+          item.id === producto.id &&
+          JSON.stringify(item.datos_extra) === JSON.stringify(extraData)
+      );
 
-      if (existing && !isBattery) {
-        if (existing.cantidad + 1 > producto.stock) {
+      if (existingIndex !== -1 && !isBattery) {
+        const existing = prev[existingIndex];
+        //validar stock solo si no es edición y es producto físico
+        if (
+          !editId &&
+          producto.tipo === "producto" &&
+          existing.cantidad + 1 > producto.stock
+        ) {
           toast.warning("Stock máximo alcanzado");
           return prev;
         }
-        return prev.map((item) =>
-          item.id === producto.id
-            ? {
-                ...item,
-                cantidad: item.cantidad + 1,
-                subtotal: (item.cantidad + 1) * item.precio,
-              }
-            : item
-        );
+        const updatedCart = [...prev];
+        updatedCart[existingIndex] = {
+          ...existing,
+          cantidad: existing.cantidad + 1,
+          subtotal: (existing.cantidad + 1) * existing.precio,
+        };
+        return updatedCart;
       }
 
-      //agregar nuevo item
       return [
         ...prev,
         {
@@ -252,12 +321,17 @@ export default function POSPage() {
       prev.map((item) => {
         if (item.id === id) {
           const newQty = item.cantidad + delta;
-          if (newQty < 1) return item; // No bajar de 1
-          if (newQty > item.stock_max) {
+          if (newQty < 1) return item;
+          //validar stock max solo si no estoy editando (o para ser estrictos)
+          if (!editId && newQty > item.stock_max) {
             toast.warning("No hay suficiente stock");
             return item;
           }
-          return { ...item, cantidad: newQty, subtotal: newQty * item.precio };
+          return {
+            ...item,
+            cantidad: newQty,
+            subtotal: newQty * item.precio,
+          };
         }
         return item;
       })
@@ -265,8 +339,53 @@ export default function POSPage() {
   };
 
   const removeItem = (index: number) => {
-    //Usamos index en lugar de ID porque puede haber varias baterías iguales con distinto código
+    //usamos index en lugar de ID porque puede haber varias baterías iguales con distinto código
     setCart((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addCustomItem = async () => {
+    if (!customItemData.descripcion || !customItemData.precio) {
+      toast.error("Completa descripción y precio");
+      return;
+    }
+    //determinar qué código buscar según el tipo seleccionado
+    const codigoBuscar =
+      customItemData.tipo === "servicio" ? "GEN-SERV" : "GEN-EXT";
+
+    try {
+      //buscar el ID del producto genérico en la BD
+      const res = await fetch(
+        `/api/productos/buscar-codigo?codigo=${codigoBuscar}`
+      );
+      if (!res.ok)
+        throw new Error(
+          "No se encontraron los productos genéricos en el sistema"
+        );
+
+      const productoGenerico = await res.json();
+
+      //construir el objeto para el carrito
+      //sobrescribimos el nombre visualmente y guardamos la descripción real en datos_extra
+      const itemParaCarrito = {
+        ...productoGenerico,
+        nombre: customItemData.descripcion.toUpperCase(), //para que se vea bonito en la lista
+        precio: parseFloat(customItemData.precio),
+        es_bateria: false,
+        //aquí guardamos la descripción original por si acaso
+        datos_extra: {
+          descripcion_personalizada: customItemData.descripcion,
+          es_item_libre: true,
+        },
+      };
+
+      //agregar al carrito y pasamos datos_extra para que la lógica de agrupar sepa que son distintos si tienen distinta descripción
+      addToCartFinal(itemParaCarrito, itemParaCarrito.datos_extra);
+
+      setCustomItemModalOpen(false);
+      setCustomItemData({ tipo: "servicio", descripcion: "", precio: "" });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   //lógica para el cobro
@@ -290,26 +409,57 @@ export default function POSPage() {
         })),
       };
 
-      const res = await fetch("/api/ventas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let res;
+      if (editId) {
+        //modo edición
+        res = await fetch(`/api/ventas/${editId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        //modo creación
+        res = await fetch("/api/ventas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
 
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error || "Error al procesar venta");
 
-      toast.success("Venta realizada con éxito");
-      setCart([]); //limpia el carrito de compras
-      setSearchResults([]);
-      setClientName("");
+      toast.success(editId ? "Venta actualizada" : "Venta registrada");
+
+      if (editId) {
+        router.push("/ventas"); // Volver al historial
+      } else {
+        setCart([]);
+        setSearchResults([]);
+        setClientName("");
+        setIsPending(false);
+      }
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setLoadingPay(false);
     }
   };
+
+  if (isLoadingData) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        Cargando datos de venta...
+      </div>
+    );
+  }
 
   return (
     <>
@@ -354,6 +504,24 @@ export default function POSPage() {
                 title="Abrir Cámara"
               >
                 <ScanBarcode size={20} />
+              </button>
+            </div>
+            <div style={{ marginTop: 10, marginBottom: 20 }}>
+              <button
+                onClick={() => setCustomItemModalOpen(true)}
+                className={styles.btnSecondary}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  background: "white",
+                  border: "2px dashed var(--color-primary)",
+                  color: "var(--color-primary)",
+                  borderRadius: 8,
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                + Agregar Mano de Obra / Externo
               </button>
             </div>
           </form>
@@ -518,7 +686,7 @@ export default function POSPage() {
               className={styles.payButton}
               onClick={handlePay}
               disabled={cart.length === 0 || loadingPay}
-              // Cambiamos el color si es pendiente para que sea visualmente obvio
+              //cambiamos el color si es pendiente para que sea visualmente obvio
               style={{
                 background: isPending ? "#eab308" : "var(--color-primary)",
               }}
@@ -620,6 +788,125 @@ export default function POSPage() {
                   }}
                 >
                   {editingCartIndex !== null ? "Actualizar" : "Agregar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {customItemModalOpen && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+              <h3 style={{ marginTop: 0, color: "var(--color-secondary)" }}>
+                Agregar Concepto Libre
+              </h3>
+
+              <div style={{ marginBottom: 15 }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 5,
+                    fontWeight: "bold",
+                  }}
+                >
+                  Tipo
+                </label>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomItemData({ ...customItemData, tipo: "servicio" })
+                    }
+                    style={{
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      background:
+                        customItemData.tipo === "servicio"
+                          ? "var(--color-secondary)"
+                          : "white",
+                      color:
+                        customItemData.tipo === "servicio" ? "white" : "black",
+                    }}
+                  >
+                    Mano de obra
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomItemData({ ...customItemData, tipo: "tercero" })
+                    }
+                    style={{
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      background:
+                        customItemData.tipo === "tercero"
+                          ? "var(--color-primary)"
+                          : "white",
+                      color:
+                        customItemData.tipo === "tercero" ? "white" : "black",
+                    }}
+                  >
+                    Producto externo
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 15 }}>
+                <label className={styles.label}>Descripción</label>
+                <input
+                  className={styles.searchInput}
+                  placeholder="mano de obra o producto..."
+                  value={customItemData.descripcion}
+                  onChange={(e) =>
+                    setCustomItemData({
+                      ...customItemData,
+                      descripcion: e.target.value,
+                    })
+                  }
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label className={styles.label}>Precio (Q)</label>
+                <input
+                  type="number"
+                  className={styles.searchInput}
+                  placeholder="0.00"
+                  value={customItemData.precio}
+                  onChange={(e) =>
+                    setCustomItemData({
+                      ...customItemData,
+                      precio: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div
+                style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
+              >
+                <button
+                  onClick={() => setCustomItemModalOpen(false)}
+                  style={{
+                    padding: "10px 20px",
+                    border: "1px solid #ccc",
+                    background: "transparent",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={addCustomItem}
+                  className={styles.payButton}
+                  style={{ width: "auto", padding: "10px 25px" }}
+                >
+                  Agregar
                 </button>
               </div>
             </div>

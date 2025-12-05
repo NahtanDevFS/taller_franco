@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import { Menu } from "lucide-react"; // Icono de hamburguesa
+import { Menu } from "lucide-react";
 import styles from "./layout.module.css";
 
 export default function AdminLayout({
@@ -13,12 +13,10 @@ export default function AdminLayout({
 
   return (
     <div className={styles.container}>
-      {/* 1. El Sidebar */}
       <Sidebar isOpen={sidebarOpen} closeMobile={() => setSidebarOpen(false)} />
 
-      {/* 2. El Contenido Principal */}
       <div className={styles.mainContent}>
-        {/*barra superior móvil (visible solo en móvil) */}
+        {/*barra superior para mobile*/}
         <header className={styles.mobileHeader}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -36,7 +34,6 @@ export default function AdminLayout({
           </span>
         </header>
 
-        {/* Aquí se renderiza la página que esté visible (Productos, Ventas, etc) */}
         <main className={styles.contentBody}>{children}</main>
       </div>
 

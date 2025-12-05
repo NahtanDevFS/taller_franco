@@ -4,7 +4,7 @@ import { pool } from "@/lib/db";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
-  //Si piden "all_batteries", devolvemos lista simple para el Select
+  //si piden "all_batteries", devolvemos lista simple para el Select
   const allBatteries = searchParams.get("type") === "all_batteries";
 
   if (allBatteries) {
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Helper para usar query
+//helper para usar query
 async function query(text: string, params: any[]) {
   return pool.query(text, params);
 }
@@ -109,28 +109,28 @@ export async function POST(request: Request) {
     const finalCodigo =
       codigo_barras && codigo_barras.trim() !== "" ? codigo_barras : null;
 
-    // Limpiar categoría si es "", lo volvemos NULL para no romper el tipo INT
+    //limpiar categoría si es "", lo volvemos NULL para no romper el tipo INT
     const finalCategoriaId =
       categoria_id && categoria_id !== "" ? parseInt(categoria_id) : null;
 
-    // Definir marca ID inicial y si viene marca_id lo convertimos a entero, si no, null
+    //definir marca ID inicial y si viene marca_id lo convertimos a entero, si no, null
     let finalMarcaId = marca_id && marca_id !== "" ? parseInt(marca_id) : null;
 
     await client.query("BEGIN");
 
-    // lógica para agregar una nueva marca
+    //lógica para agregar una nueva marca
     if (nueva_marca_nombre && nueva_marca_nombre.trim() !== "") {
-      // Verificar si ya existe para no duplicar por error
+      //verificar si ya existe para no duplicar por error
       const checkMarca = await client.query(
         "SELECT id FROM marcas WHERE nombre = $1",
         [nueva_marca_nombre]
       );
 
       if (checkMarca.rows.length > 0) {
-        //Si ya existe usamos esa
+        //si ya existe usamos esa
         finalMarcaId = checkMarca.rows[0].id;
       } else {
-        //Si no existe, la creamos
+        //si no existe, la creamos
         const marcaRes = await client.query(
           "INSERT INTO marcas (nombre) VALUES ($1) RETURNING id",
           [nueva_marca_nombre]

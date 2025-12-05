@@ -1,6 +1,4 @@
-// src/types/database.ts
-
-// Tipo para el JSON de detalles, este es para poner información de las baterías por ejemplo
+// Tipo para el JSON de detalles, este es para poner información de las baterías
 export interface DatosExtraBateria {
   garantia_anios?: number;
   fecha_fin_garantia?: string;
@@ -19,6 +17,7 @@ export interface Producto {
   marca_id: number | null;
   url_imagen: string | null;
   es_bateria: boolean;
+  tipo: "producto" | "servicio" | "tercero";
   created_at: string;
 }
 

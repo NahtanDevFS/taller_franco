@@ -3,12 +3,12 @@ import { pool } from "@/lib/db";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const range = searchParams.get("range") || "week"; // day, week, month, year
+  const range = searchParams.get("range") || "week"; //day, week, month, year
   try {
-    let truncType = "day"; // Por defecto agrupar por día
-    let interval = "INTERVAL '7 days'"; // Por defecto última semana
+    let truncType = "day"; //por defecto agrupar por día
+    let interval = "INTERVAL '7 days'"; //por defecto última semana
 
-    // Lógica de filtros para PostgreSQL
+    //lógica de filtros para postgresql
     switch (range) {
       case "day": // Ventas de hoy por hora
         truncType = "hour";
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     const res = await pool.query(sql, [truncType]);
 
-    // Formatear datos para Recharts
+    //formatear datos para Recharts
     const data = res.rows.map((row) => ({
       name: formatLabel(new Date(row.fecha), truncType),
       total: parseFloat(row.total),
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Helper para que las etiquetas de la gráfica se vean bonitas
+//helper para que las etiquetas de la gráfica se vean bonitas
 function formatLabel(date: Date, type: string) {
   const options: Intl.DateTimeFormatOptions = { timeZone: "America/Guatemala" };
   if (type === "hour")

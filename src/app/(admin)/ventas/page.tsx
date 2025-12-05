@@ -16,6 +16,7 @@ import {
   Filter,
   X,
   Banknote,
+  Edit,
 } from "lucide-react";
 import styles from "../productos/productos.module.css";
 import stylesHistorial from "./historialVentas.module.css";
@@ -25,23 +26,23 @@ export default function HistorialVentasPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Estados para filtros de fecha
+  //estados para filtros de fecha
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showAnuladas, setShowAnuladas] = useState(false);
 
-  // useStates para ver los modales
+  //useStates para ver los modales
   const [selectedVenta, setSelectedVenta] = useState<any | null>(null);
   const [detallesVenta, setDetallesVenta] = useState<any[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
-  // Estados para agregar productos extra
+  //estados para agregar productos extra
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [itemsToAdd, setItemsToAdd] = useState<any[]>([]);
 
-  // Función para cargar ventas con filtros
+  //función para cargar ventas con filtros
   const fetchVentas = async (p = page) => {
     const params = new URLSearchParams({
       page: p.toString(),
@@ -229,7 +230,7 @@ export default function HistorialVentasPage() {
     <div style={{ padding: 20 }}>
       <Toaster position="top-right" richColors />
 
-      {/* CABECERA */}
+      {/*cabecera*/}
       <div
         style={{
           display: "flex",
@@ -262,12 +263,12 @@ export default function HistorialVentasPage() {
               boxShadow: "0 4px 6px rgba(249, 115, 22, 0.2)",
             }}
           >
-            <ShoppingCart size={20} /> Nueva Venta (POS)
+            <ShoppingCart size={20} /> Nueva venta (POS)
           </button>
         </Link>
       </div>
 
-      {/* BARRA DE FILTROS DE FECHA */}
+      {/*barra con los filtros*/}
       <div className={styles.filterBar} style={{ marginBottom: 20 }}>
         <div
           style={{
@@ -361,7 +362,7 @@ export default function HistorialVentasPage() {
         </label>
       </div>
 
-      {/* TABLA DE VENTAS */}
+      {/*tabla de ventas*/}
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -441,6 +442,20 @@ export default function HistorialVentasPage() {
                     >
                       <Eye size={18} />
                     </button>
+                    <Link href={`/ventas/nueva?id=${v.id}`}>
+                      <button
+                        title="Editar"
+                        style={{
+                          marginRight: 10,
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--color-secondary)",
+                        }}
+                      >
+                        <Edit size={18} />
+                      </button>
+                    </Link>
                     {v.estado === "pendiente" && (
                       <button
                         onClick={() => handlePagar(v)}
@@ -478,7 +493,7 @@ export default function HistorialVentasPage() {
         </table>
       </div>
 
-      {/* PAGINACIÓN */}
+      {/*paginación*/}
       <div
         style={{
           marginTop: 20,
@@ -519,7 +534,7 @@ export default function HistorialVentasPage() {
         </button>
       </div>
 
-      {/* MODAL DETALLES */}
+      {/*modal de detalles*/}
       {modalOpen && selectedVenta && (
         <div
           style={{
@@ -586,7 +601,8 @@ export default function HistorialVentasPage() {
             <div
               style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
             >
-              {selectedVenta.estado !== "anulada" && (
+              {/*{selectedVenta.estado !== "anulada" && (
+                
                 <button
                   onClick={abrirModalAgregar}
                   style={{
@@ -603,7 +619,8 @@ export default function HistorialVentasPage() {
                 >
                   <PlusCircle size={16} /> Agregar Productos Extra
                 </button>
-              )}
+                
+              )}*/}
               <button
                 onClick={() => setModalOpen(false)}
                 style={{

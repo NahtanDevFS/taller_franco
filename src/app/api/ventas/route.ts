@@ -88,17 +88,27 @@ export async function POST(request: Request) {
     );
     const ventaId = ventaRes.rows[0].id;
 
-    // Insertar detalles y restar el stock de la tabla de productos
+    //insertar detalles y restar el stock de la tabla de productos
     for (const item of items) {
-      // Validar stock (doble check)
-      const stockRes = await client.query(
-        "SELECT stock FROM productos WHERE id = $1",
+      //obtenemos datos del producto con el tipo
+      const prodRes = await client.query(
+        "SELECT stock, tipo, nombre FROM productos WHERE id = $1",
         [item.producto_id]
       );
-      if (stockRes.rows[0].stock < item.cantidad) {
-        throw new Error(
-          `Stock insuficiente para producto ID ${item.producto_id}`
-        );
+
+      if (prodRes.rows.length === 0) {
+        throw new Error(`Producto ID ${item.producto_id} no encontrado`);
+      }
+
+      const productoDB = prodRes.rows[0];
+
+      //validación de stock solo si es tipo producto, si es servicio o tercero, ignoramos el stock
+      if (productoDB.tipo === "producto") {
+        if (productoDB.stock < item.cantidad) {
+          throw new Error(
+            `Stock insuficiente para ${productoDB.nombre}. Disponibles: ${productoDB.stock}`
+          );
+        }
       }
 
       const datosExtra = item.datos_extra
@@ -114,16 +124,19 @@ export async function POST(request: Request) {
           ventaId,
           item.producto_id,
           item.cantidad,
-          item.precio,
+          item.precio, //usamos el precio que viene del frontend ya que es importante para servicios con precio variable
           item.cantidad * item.precio,
           datosExtra,
         ]
       );
 
-      await client.query(
-        "UPDATE productos SET stock = stock - $1 WHERE id = $2",
-        [item.cantidad, item.producto_id]
-      );
+      //resta de stock solo si es tipo producto
+      if (productoDB.tipo === "producto") {
+        await client.query(
+          "UPDATE productos SET stock = stock - $1 WHERE id = $2",
+          [item.cantidad, item.producto_id]
+        );
+      }
     }
 
     await client.query("COMMIT");

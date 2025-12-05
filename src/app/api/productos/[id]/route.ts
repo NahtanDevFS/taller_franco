@@ -22,7 +22,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       es_bateria,
     } = body;
 
-    // Limpieza de datos (igual que en POST)
+    //limpieza de datos
     const finalCodigo =
       codigo_barras && codigo_barras.trim() !== "" ? codigo_barras : null;
     const finalCategoriaId =
@@ -31,7 +31,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
 
     await client.query("BEGIN");
 
-    // si se quiere crear una marca durante la edición
+    //si se quiere crear una marca durante la edición
     if (nueva_marca_nombre && nueva_marca_nombre.trim() !== "") {
       const checkMarca = await client.query(
         "SELECT id FROM marcas WHERE nombre = $1",
@@ -93,19 +93,19 @@ export async function PUT(request: Request, { params }: { params: Params }) {
 export async function DELETE(request: Request, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    // Si el producto ya tiene ventas asociadas, esto fallará por la Foreign Key, eso es bueno para mantener la integridad de los datos históricos.
+    //si el producto ya tiene ventas asociadas, esto fallará por la Foreign Key, eso es bueno para mantener la integridad de los datos históricos.
     await pool.query("DELETE FROM productos WHERE id = $1", [id]);
 
     return NextResponse.json({ message: "Producto eliminado" });
   } catch (error: any) {
-    // Código 23503 es violación de Foreign Key en Postgres (tiene ventas)
+    // Código 23503 es violación de Foreign Key en postgres (tiene ventas)
     if (error.code === "23503") {
       return NextResponse.json(
         {
           error:
             "No se puede eliminar: Este producto ya tiene historial de ventas",
         },
-        { status: 409 } // este estado corresponde a un conflicto
+        { status: 409 } //este status corresponde a un conflicto
       );
     }
     return NextResponse.json({ error: error.message }, { status: 500 });

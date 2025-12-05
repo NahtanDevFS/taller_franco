@@ -92,54 +92,92 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
   try {
     const body = await req.json();
-    const { items_nuevos } = body; // Array de nuevos productos a agregar
+    const { items, total, cliente, estado, fecha_venta } = body; //array de info de productos
 
     await client.query("BEGIN");
 
-    let totalAdicional = 0;
+    //devuelve lo que ya se había vendido y obtenemos los detalles actuales antes de borrarlos
+    const oldDetailsRes = await client.query(
+      `SELECT d.producto_id, d.cantidad, p.tipo 
+       FROM detalle_ventas d
+       JOIN productos p ON d.producto_id = p.id
+       WHERE d.venta_id = $1`,
+      [id]
+    );
 
-    for (const item of items_nuevos) {
-      //validar Stock
-      const stockRes = await client.query(
-        "SELECT stock FROM productos WHERE id = $1",
+    for (const oldItem of oldDetailsRes.rows) {
+      //solo devolvemos stock si es un producto físico
+      if (oldItem.tipo === "producto") {
+        await client.query(
+          "UPDATE productos SET stock = stock + $1 WHERE id = $2",
+          [oldItem.cantidad, oldItem.producto_id]
+        );
+      }
+    }
+    //aquí limpio los detalles antiguos
+    await client.query("DELETE FROM detalle_ventas WHERE venta_id = $1", [id]);
+
+    //esto actualiza la cabecera de venta, en donde si se envía fecha_venta se actualiza, si no se mantiene la original gracias a coalesce
+    await client.query(
+      `UPDATE ventas 
+       SET total = $1, cliente = $2, estado = $3, fecha_venta = COALESCE($4, fecha_venta)
+       WHERE id = $5`,
+      [total, cliente, estado, fecha_venta, id]
+    );
+
+    //aquí se vuelve a aplicar los nuevos items y restar el stock
+    for (const item of items) {
+      const prodRes = await client.query(
+        "SELECT stock, tipo, nombre FROM productos WHERE id = $1",
         [item.producto_id]
       );
-      if (stockRes.rows[0].stock < item.cantidad)
-        throw new Error(`Sin stock para ${item.nombre}`);
 
-      const subtotal = item.cantidad * item.precio;
+      if (prodRes.rows.length === 0)
+        throw new Error(`Producto ${item.producto_id} no existe`);
+      const prodDB = prodRes.rows[0];
+
+      //valida el stock solo si es producto físico
+      if (prodDB.tipo === "producto") {
+        if (prodDB.stock < item.cantidad) {
+          throw new Error(
+            `Stock insuficiente para ${prodDB.nombre} (Disponible: ${prodDB.stock})`
+          );
+        }
+      }
+
       const datosExtra = item.datos_extra
         ? JSON.stringify(item.datos_extra)
         : null;
 
-      //insertar detalle
+      //insertar nuevo detalle
       await client.query(
-        `
-        INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal, datos_extra)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `,
-        [id, item.producto_id, item.cantidad, item.precio, subtotal, datosExtra]
+        `INSERT INTO detalle_ventas 
+         (venta_id, producto_id, cantidad, precio_unitario, subtotal, datos_extra)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          id,
+          item.producto_id,
+          item.cantidad,
+          item.precio,
+          item.cantidad * item.precio,
+          datosExtra,
+        ]
       );
 
-      //restar stock
-      await client.query(
-        "UPDATE productos SET stock = stock - $1 WHERE id = $2",
-        [item.cantidad, item.producto_id]
-      );
-
-      totalAdicional += subtotal;
+      //restar stock solo si es producto físico
+      if (prodDB.tipo === "producto") {
+        await client.query(
+          "UPDATE productos SET stock = stock - $1 WHERE id = $2",
+          [item.cantidad, item.producto_id]
+        );
+      }
     }
 
-    //actualizar total de la venta
-    await client.query("UPDATE ventas SET total = total + $1 WHERE id = $2", [
-      totalAdicional,
-      id,
-    ]);
-
     await client.query("COMMIT");
-    return NextResponse.json({ message: "Productos agregados a la venta" });
+    return NextResponse.json({ message: "Venta sincronizada correctamente" });
   } catch (error: any) {
     await client.query("ROLLBACK");
+    console.error("Error sync venta:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   } finally {
     client.release();

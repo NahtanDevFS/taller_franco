@@ -4,7 +4,7 @@ import { pool } from "@/lib/db";
 //GET para los cards de resumen de ventas
 export async function GET() {
   try {
-    //Consulta para las ventas del día
+    //consulta para las ventas del día
     const ventasHoyQuery = `
       SELECT COALESCE(SUM(total), 0) as total 
       FROM ventas 
@@ -12,7 +12,7 @@ export async function GET() {
       AND date_trunc('day', fecha_venta) = date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
     `;
 
-    //Consulta para las ventas del mes actual
+    //consulta para las ventas del mes actual
     const ventasMesQuery = `
       SELECT COALESCE(SUM(total), 0) as total 
       FROM ventas 
@@ -20,13 +20,13 @@ export async function GET() {
       AND date_trunc('month', fecha_venta) = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
     `;
 
-    //Consulta con el total de inventario valorado (Precio venta * stock)
+    //consulta con el total de inventario valorado (precio venta * stock)
     const inventarioQuery = `
       SELECT COALESCE(SUM(stock * precio), 0) as total 
       FROM productos
     `;
 
-    // Productos con Bajo Stock (limitado a 20)
+    //productos con bajo Stock (limitado a 20)
     const bajoStockQuery = `
       SELECT p.id, p.nombre, p.stock, p.stock_minimo, m.nombre as marca, c.nombre as categoria
       FROM productos p
@@ -37,7 +37,7 @@ export async function GET() {
       LIMIT 20
     `;
 
-    //Consulta con top 5 productos más vendidos del mes actual
+    //consulta con top 5 productos más vendidos del mes actual
     const topProductosQuery = `
       SELECT p.nombre, SUM(dv.cantidad) as cantidad_vendida
       FROM detalle_ventas dv

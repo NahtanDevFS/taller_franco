@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
-// GET: Listar historial de baterías
+//historial de baterías
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get("page") || "1");
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit;
 
   try {
-    //Construcción dinámica de filtros
+    //construcción dinámica de filtros
     let whereClauses = ["p.es_bateria = true", "v.estado = 'completada'"];
     let params = [];
     let pCount = 1;
@@ -24,13 +24,12 @@ export async function GET(request: Request) {
     }
     if (endDate) {
       whereClauses.push(`v.fecha_venta <= $${pCount}`);
-      params.push(`${endDate} 23:59:59`); // Fin del día
+      params.push(`${endDate} 23:59:59`); //fin del día
       pCount++;
     }
 
     const whereString = whereClauses.join(" AND ");
 
-    // Query de datos
     const sql = `
       SELECT 
         d.id,
@@ -50,7 +49,7 @@ export async function GET(request: Request) {
       LIMIT $${pCount} OFFSET $${pCount + 1}
     `;
 
-    //Query de conteo total
+    //query de conteo total
     const countSql = `
       SELECT COUNT(*)
       FROM detalle_ventas d
@@ -92,7 +91,7 @@ export async function POST(request: Request) {
 
     await client.query("BEGIN");
 
-    //verificar Stock
+    //verificar stock
     const stockRes = await client.query(
       "SELECT stock FROM productos WHERE id = $1",
       [producto_id]
@@ -113,7 +112,7 @@ export async function POST(request: Request) {
     );
     const ventaId = ventaRes.rows[0].id;
 
-    //crear Detalle
+    //crear detalle
     const datosExtra = JSON.stringify({
       garantia_meses: parseInt(garantia_meses),
       codigo_bateria: codigo_unico,

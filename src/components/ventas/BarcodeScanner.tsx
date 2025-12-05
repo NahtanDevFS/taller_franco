@@ -17,7 +17,7 @@ export default function BarcodeScanner({
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
-  //referencia para la instancia del escáner (se crea una sola vez)
+  //referencia para la instancia del escaner (se crea una sola vez)
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const regionId = "html5qr-code-full-region";
 

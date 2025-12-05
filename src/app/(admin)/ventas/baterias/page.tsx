@@ -13,21 +13,21 @@ export default function VentasBateriasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Estados de Paginación y Filtros
+  //estados de paginación y filtros
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // Estado para búsqueda dentro del modal
+  //estado para búsqueda dentro del modal
   const [searchTerm, setSearchTerm] = useState("");
   const [productsFound, setProductsFound] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
   const formatDateTimeLocal = (date: Date) => {
     const d = new Date(date);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // obtiene la hora local
-    return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); //obtiene la hora local
+    return d.toISOString().slice(0, 16); //YYYY-MM-DDTHH:mm
   };
 
   const initialForm = {
@@ -54,7 +54,7 @@ export default function VentasBateriasPage() {
     init();
   }, []);
 
-  // Función Fetch Principal con Filtros
+  //función fetch principal con filtros
   const fetchVentas = async (p = page) => {
     const params = new URLSearchParams({
       page: p.toString(),
@@ -70,7 +70,7 @@ export default function VentasBateriasPage() {
     }
   };
 
-  // Recargar al cambiar página
+  //recargar al cambiar página
   useEffect(() => {
     fetchVentas(page);
   }, [page]);
@@ -84,7 +84,7 @@ export default function VentasBateriasPage() {
     setStartDate("");
     setEndDate("");
     setPage(1);
-    // Fetch manual para asegurar limpieza inmediata
+    //fetch manual para asegurar limpieza inmediata
     fetch(`/api/ventas/baterias?page=1`)
       .then((res) => res.json())
       .then((data) => {
@@ -98,7 +98,7 @@ export default function VentasBateriasPage() {
     if (res.ok) setBatteryProducts(await res.json());
   };
 
-  // manejar el formulario
+  //manejar el formulario
   const handleProductSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const prodId = e.target.value;
     const prod = batteryProducts.find((p) => p.id.toString() === prodId);
@@ -204,7 +204,7 @@ export default function VentasBateriasPage() {
         </button>
       </div>
 
-      {/* BARRA DE FILTROS */}
+      {/*barra de filtros*/}
       <div className={styles.filterBar} style={{ marginBottom: 20 }}>
         <div
           style={{
@@ -268,7 +268,7 @@ export default function VentasBateriasPage() {
         </div>
       </div>
 
-      {/* TABLA */}
+      {/*tabla*/}
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -335,7 +335,7 @@ export default function VentasBateriasPage() {
         </table>
       </div>
 
-      {/* PAGINACIÓN */}
+      {/*paginacion*/}
       <div
         style={{
           marginTop: 20,
@@ -376,7 +376,7 @@ export default function VentasBateriasPage() {
         </button>
       </div>
 
-      {/* MODAL */}
+      {/*modal*/}
       {modalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -405,7 +405,6 @@ export default function VentasBateriasPage() {
             <form onSubmit={handleSubmit}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Modelo de Batería</label>
-                {/* SELECT DESBLOQUEADO SIEMPRE */}
                 <select
                   className={styles.input}
                   value={formData.producto_id}
@@ -483,7 +482,7 @@ export default function VentasBateriasPage() {
                   className={styles.input}
                   type="number"
                   value={formData.precio}
-                  disabled // El precio lo dicta el modelo, se llena solo
+                  disabled //El precio lo dicta el modelo, se llena solo
                   style={{ backgroundColor: "#f1f5f9" }}
                 />
               </div>

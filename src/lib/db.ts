@@ -1,11 +1,11 @@
 import { Pool } from "pg";
 
-// Configuración de la conexión
-// variable de entorno "Transaction mode" (puerto 6543)
+//configuración de la conexión
+//variable de entorno "transaction mode"
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false, // Necesario para conexiones seguras a Supabase/Cloud
+    rejectUnauthorized: false, //necesario para conexiones seguras a supabase/cloud
   },
 });
 
