@@ -34,7 +34,7 @@ interface CartItem {
   } | null;
 }
 
-export default function POSPage() {
+function POSContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const editId = searchParams.get("id"); //ID si se está editando
@@ -914,5 +914,14 @@ export default function POSPage() {
         )}
       </div>
     </>
+  );
+}
+
+export default function POSPage() {
+  //es requerido encerrar en suspense la función cuando se implementa useSearchParams dentro de ella con el objetivo de mantener la integridad de los datos
+  return (
+    <Suspense fallback={<div>Cargando editor de ventas...</div>}>
+      <POSContent />
+    </Suspense>
   );
 }
