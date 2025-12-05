@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit;
 
   try {
-    let whereClauses = [];
+    let whereClauses = ["p.tipo = 'producto'"];
     let values = [];
     let paramCounter = 1;
 

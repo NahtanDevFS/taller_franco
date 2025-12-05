@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       FROM productos p
       LEFT JOIN marcas m ON p.marca_id = m.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
-      WHERE p.codigo_barras = $1
+      WHERE p.codigo_barras = $1 AND p.tipo = 'producto'
     `;
 
     const result = await query(sql, [codigo]);
