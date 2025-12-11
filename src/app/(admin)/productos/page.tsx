@@ -29,7 +29,10 @@ export default function ProductosPage() {
     marca_id: "",
     nueva_marca_nombre: "",
     categoria_id: "",
-    es_bateria: false, // Nuevo estado
+    es_bateria: false,
+    es_liquido: false,
+    capacidad: 1,
+    unidad_medida: "Litros",
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -115,7 +118,10 @@ export default function ProductosPage() {
       categoria_id: producto.categoria_id
         ? producto.categoria_id.toString()
         : "",
-      es_bateria: producto.es_bateria || false, // Cargar estado actual
+      es_bateria: producto.es_bateria || false,
+      es_liquido: producto.es_liquido || false,
+      capacidad: producto.capacidad || 1,
+      unidad_medida: producto.unidad_medida || "Litros",
     });
     setIsManualMarca(false);
     setModalOpen(true);
@@ -378,20 +384,78 @@ export default function ProductosPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label
-                  className={styles.label}
-                  style={{ display: "flex", alignItems: "center", gap: 10 }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.es_bateria}
-                    onChange={(e) =>
-                      setFormData({ ...formData, es_bateria: e.target.checked })
-                    }
-                  />
-                  Es batería
-                </label>
+                <div style={{ display: "flex", gap: 20 }}>
+                  <label
+                    className={styles.label}
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.es_bateria}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          es_bateria: e.target.checked,
+                        })
+                      }
+                    />
+                    Es batería
+                  </label>
+                  <label
+                    className={styles.label}
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.es_liquido}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          es_liquido: e.target.checked,
+                        })
+                      }
+                    />
+                    Es líquido / Granel
+                  </label>
+                </div>
               </div>
+
+              {formData.es_liquido && (
+                <div className={styles.row}>
+                  <div className={styles.formGroup} style={{ flex: 1 }}>
+                    <label className={styles.label}>Capacidad del Envase</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={formData.capacidad}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          capacidad: parseFloat(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className={styles.formGroup} style={{ flex: 1 }}>
+                    <label className={styles.label}>Unidad de Medida</label>
+                    <select
+                      className={styles.input}
+                      value={formData.unidad_medida}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          unidad_medida: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="Litros">Litros</option>
+                      <option value="Mililitros">Mililitros</option>
+                      <option value="Galones">Galones</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className={styles.formGroup}>
                 <label className={styles.label}>

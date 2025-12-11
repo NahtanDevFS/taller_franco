@@ -1,8 +1,7 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { formatoQuetzal } from "@/lib/utils";
+import { useState, useEffect } from "react";
 import { Toaster, toast } from "sonner";
-import { Pencil, Trash2, X, Search, Filter } from "lucide-react";
+import { Pencil, Trash2, X, Filter, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "../../productos/productos.module.css";
 import stylesHistorial from "../historialVentas.module.css";
@@ -18,11 +17,6 @@ export default function VentasBateriasPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
-  //estado para búsqueda dentro del modal
-  const [searchTerm, setSearchTerm] = useState("");
-  const [productsFound, setProductsFound] = useState<any[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
   const formatDateTimeLocal = (date: Date) => {
     const d = new Date(date);
@@ -293,13 +287,34 @@ export default function VentasBateriasPage() {
                 <tr key={b.id}>
                   <td>{new Date(b.fecha_venta).toLocaleDateString()}</td>
                   <td style={{ fontWeight: "bold" }}>{b.modelo_bateria}</td>
-                  <td
-                    style={{
-                      fontFamily: "monospace",
-                      color: "var(--color-primary)",
-                    }}
-                  >
-                    {b.codigo_unico || "-"}
+                  <td>
+                    {b.codigo_unico ? (
+                      <span
+                        style={{
+                          fontFamily: "monospace",
+                          color: "var(--color-primary)",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {b.codigo_unico}
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          background: "#fef3c7",
+                          color: "#b45309",
+                          padding: "2px 8px",
+                          borderRadius: 12,
+                          fontSize: "0.8rem",
+                          border: "1px solid #fcd34d",
+                        }}
+                      >
+                        <AlertTriangle size={14} /> Pendiente
+                      </span>
+                    )}
                   </td>
                   <td>{b.garantia} Meses</td>
                   <td>{b.nombre_cliente}</td>

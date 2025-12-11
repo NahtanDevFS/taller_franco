@@ -4,19 +4,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 import styles from "./ventas.module.css";
 import { formatoQuetzal } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
-import {
-  Trash2,
-  Plus,
-  Minus,
-  ShoppingCart,
-  Save,
-  Battery,
-  ScanBarcode,
-} from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, ScanBarcode } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import BarcodeScanner from "@/components/ventas/BarcodeScanner";
 
-//interfaz para el carrito de ventas
 interface CartItem {
   id: number;
   nombre: string;
@@ -25,19 +16,21 @@ interface CartItem {
   cantidad: number;
   subtotal: number;
   es_bateria: boolean;
-  stock_max: number; //para no vender más de lo que hay
+  stock_max: number;
   datos_extra?: {
-    garantia_meses: number;
-    codigo_bateria?: string;
     descripcion_personalizada?: string;
     es_item_libre?: boolean;
+    es_liquido?: boolean;
+    es_item_parcial?: boolean;
+    parcial_id?: number;
+    descripcion_unidad?: string;
+    [key: string]: any;
   } | null;
 }
-
 function POSContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const editId = searchParams.get("id"); //ID si se está editando
+  const editId = searchParams.get("id");
 
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -47,8 +40,6 @@ function POSContent() {
   const [clientName, setClientName] = useState("");
   const [isPending, setIsPending] = useState(false);
 
-  //estado para modal de batería
-  const [batteryModalOpen, setBatteryModalOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const [pendingBattery, setPendingBattery] = useState<any | null>(null);
@@ -65,8 +56,11 @@ function POSContent() {
     precio: "",
   });
 
-  //índice del producto que se está editando en el carrito (null si es nuevo)
-  const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
+  const [liquidModalOpen, setLiquidModalOpen] = useState(false);
+  const [pendingLiquidProduct, setPendingLiquidProduct] = useState<any | null>(
+    null
+  );
+  const [liquidQuantity, setLiquidQuantity] = useState("");
 
   //referencia para mantener el foco en el scanner
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +108,7 @@ function POSContent() {
         precio: parseFloat(d.precio_unitario),
         cantidad: d.cantidad,
         subtotal: parseFloat(d.subtotal),
-        es_bateria: !!d.datos_extra?.garantia_meses,
+        es_bateria: d.producto_es_bateria,
         //en edición simplificamos el stock max visual para no bloquear al usuario ya que la validación real se hará en el backend al guardar
         stock_max: 9999,
         datos_extra: d.datos_extra,
@@ -138,9 +132,9 @@ function POSContent() {
       const producto = await resExact.json();
       addItemToCart(producto);
       setQuery("");
-      return true; // Encontrado
+      return true;
     }
-    return false; // No encontrado
+    return false;
   };
 
   const handleSearch = async (e?: React.FormEvent) => {
@@ -200,87 +194,38 @@ function POSContent() {
       return;
     }
 
-    //si es batería por defecto, abre el modal como "nuevo item"
-    if (producto.es_bateria) {
-      openBatteryModal(producto, null);
+    if (producto.es_liquido && producto.tipo === "producto") {
+      setPendingLiquidProduct(producto);
+      setLiquidQuantity("");
+      setLiquidModalOpen(true);
       return;
     }
 
-    //agregar al carrito normal
-    addToCartFinal(producto);
+    const extraData = producto.es_bateria ? { es_bateria: true } : null;
+
+    addToCartFinal(producto, extraData);
   };
 
-  const openBatteryModal = (producto: any, indexInCart: number | null) => {
-    setPendingBattery(producto);
-    setEditingCartIndex(indexInCart);
-
-    //si estamos editando uno existente, pre-llenamos los datos
-    if (indexInCart !== null) {
-      const item = cart[indexInCart];
-      setWarrantyData({
-        meses: item.datos_extra?.garantia_meses || 12,
-        codigo_unico: item.datos_extra?.codigo_bateria || "",
-      });
-    } else {
-      //si es nuevo, defaults
-      setWarrantyData({ meses: 12, codigo_unico: "" });
-    }
-
-    setBatteryModalOpen(true);
-  };
-
-  const saveBatteryDetails = () => {
-    if (!pendingBattery) return;
-
-    const extraData = {
-      garantia_meses: warrantyData.meses,
-      codigo_bateria: warrantyData.codigo_unico,
-    };
-
-    //si estamos editando un producto que ya está en el carrito
-    if (editingCartIndex !== null) {
-      setCart((prev) =>
-        prev.map((item, i) => {
-          if (i === editingCartIndex) {
-            return {
-              ...item,
-              es_bateria: true, // Forzamos que sea batería visualmente
-              datos_extra: extraData,
-            };
-          }
-          return item;
-        })
-      );
-      toast.success("Datos de batería actualizados");
-    }
-    //esto si es un producto nuevo que viene del buscador
-    else {
-      addToCartFinal(pendingBattery, extraData);
-    }
-
-    setBatteryModalOpen(false);
-    setPendingBattery(null);
-    setEditingCartIndex(null);
-    searchInputRef.current?.focus();
-  };
-
-  const addToCartFinal = (producto: any, extraData: any = null) => {
+  const addToCartFinal = (
+    producto: any,
+    extraData: any = null,
+    qtyOverride: number = 1
+  ) => {
     setCart((prev) => {
-      const isBattery = !!extraData || producto.es_bateria;
-      // Usamos el id y si tiene datos extra para diferenciar items iguales y si es item libre, también queremos agruparlo si tiene la misma descripción
+      //usamos el id y si tiene datos extra para diferenciar items iguales y si es item libre, también para agruparlo si tiene la misma descripción
       const existingIndex = prev.findIndex(
         (item) =>
           item.id === producto.id &&
           JSON.stringify(item.datos_extra) === JSON.stringify(extraData)
       );
 
-      if (existingIndex !== -1 && !isBattery) {
+      if (existingIndex !== -1) {
         const existing = prev[existingIndex];
         //validar stock solo si no es edición y es producto físico
         if (
           !editId &&
           producto.tipo === "producto" &&
-          existing.cantidad + 1 > producto.stock
+          existing.cantidad + qtyOverride > producto.stock
         ) {
           toast.warning("Stock máximo alcanzado");
           return prev;
@@ -288,8 +233,8 @@ function POSContent() {
         const updatedCart = [...prev];
         updatedCart[existingIndex] = {
           ...existing,
-          cantidad: existing.cantidad + 1,
-          subtotal: (existing.cantidad + 1) * existing.precio,
+          cantidad: existing.cantidad + qtyOverride,
+          subtotal: (existing.cantidad + qtyOverride) * existing.precio,
         };
         return updatedCart;
       }
@@ -301,16 +246,16 @@ function POSContent() {
           nombre: producto.nombre,
           codigo_barras: producto.codigo_barras,
           precio: parseFloat(producto.precio),
-          cantidad: 1,
-          subtotal: parseFloat(producto.precio),
-          es_bateria: isBattery, //usamos el flag calculado o el del producto
+          cantidad: qtyOverride,
+          subtotal: parseFloat(producto.precio) * qtyOverride,
+          es_bateria: producto.es_bateria || !!extraData?.es_bateria,
           stock_max: producto.stock,
           datos_extra: extraData,
         },
       ];
     });
 
-    if (!extraData && !producto.es_bateria) toast.success("Agregado");
+    if (!extraData?.es_liquido) toast.success("Agregado");
     setSearchResults([]);
     setQuery("");
     searchInputRef.current?.focus();
@@ -322,16 +267,11 @@ function POSContent() {
         if (item.id === id) {
           const newQty = item.cantidad + delta;
           if (newQty < 1) return item;
-          //validar stock max solo si no estoy editando (o para ser estrictos)
           if (!editId && newQty > item.stock_max) {
-            toast.warning("No hay suficiente stock");
+            toast.warning("Stock insuficiente");
             return item;
           }
-          return {
-            ...item,
-            cantidad: newQty,
-            subtotal: newQty * item.precio,
-          };
+          return { ...item, cantidad: newQty, subtotal: newQty * item.precio };
         }
         return item;
       })
@@ -364,14 +304,13 @@ function POSContent() {
 
       const productoGenerico = await res.json();
 
-      //construir el objeto para el carrito
-      //sobrescribimos el nombre visualmente y guardamos la descripción real en datos_extra
+      //construir el objeto para el carrito, sobrescribimos el nombre visualmente y guardamos la descripción real en datos_extra
       const itemParaCarrito = {
         ...productoGenerico,
         nombre: customItemData.descripcion.toUpperCase(), //para que se vea bonito en la lista
         precio: parseFloat(customItemData.precio),
         es_bateria: false,
-        //aquí guardamos la descripción original por si acaso
+        //aquí guardo la descripción original por si acaso
         datos_extra: {
           descripcion_personalizada: customItemData.descripcion,
           es_item_libre: true,
@@ -398,8 +337,8 @@ function POSContent() {
     try {
       const payload = {
         usuario_id: userId,
-        cliente: clientName || "CF", //Enviamos el cliente
-        total: total,
+        cliente: clientName || "CF",
+        total: cart.reduce((acc, item) => acc + item.subtotal, 0),
         estado: isPending ? "pendiente" : "completada",
         items: cart.map((item) => ({
           producto_id: item.id,
@@ -409,31 +348,22 @@ function POSContent() {
         })),
       };
 
-      let res;
-      if (editId) {
-        //modo edición
-        res = await fetch(`/api/ventas/${editId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        //modo creación
-        res = await fetch("/api/ventas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
+      const url = editId ? `/api/ventas/${editId}` : "/api/ventas";
+      const method = editId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al procesar venta");
+      if (!res.ok) throw new Error(data.error || "Error");
 
       toast.success(editId ? "Venta actualizada" : "Venta registrada");
 
-      if (editId) {
-        router.push("/ventas"); // Volver al historial
-      } else {
+      if (editId) router.push("/ventas");
+      else {
         setCart([]);
         setSearchResults([]);
         setClientName("");
@@ -444,6 +374,46 @@ function POSContent() {
     } finally {
       setLoadingPay(false);
     }
+  };
+
+  const confirmLiquidAdd = () => {
+    if (!pendingLiquidProduct || !liquidQuantity) return;
+    const qty = parseFloat(liquidQuantity);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error("Cantidad inválida");
+      return;
+    }
+
+    if (
+      pendingLiquidProduct.origen === "parcial" &&
+      qty > pendingLiquidProduct.stock
+    ) {
+      toast.error(
+        `Solo quedan ${pendingLiquidProduct.stock} ${pendingLiquidProduct.unidad_medida}`
+      );
+      return;
+    }
+
+    let precioFinal = pendingLiquidProduct.precio;
+    if (pendingLiquidProduct.capacidad > 0) {
+      precioFinal =
+        pendingLiquidProduct.precio / pendingLiquidProduct.capacidad;
+    }
+
+    const extra = {
+      es_liquido: true,
+      es_item_parcial: pendingLiquidProduct.origen === "parcial",
+      parcial_id: pendingLiquidProduct.parcial_id,
+      descripcion_unidad: pendingLiquidProduct.unidad_medida,
+    };
+
+    addToCartFinal(
+      { ...pendingLiquidProduct, precio: precioFinal },
+      extra,
+      qty
+    );
+    setLiquidModalOpen(false);
+    setPendingLiquidProduct(null);
   };
 
   if (isLoadingData) {
@@ -529,7 +499,7 @@ function POSContent() {
           <div className={styles.resultsGrid}>
             {searchResults.map((p) => (
               <div
-                key={p.id}
+                key={p.origen === "parcial" ? `parcial-${p.parcial_id}` : p.id}
                 className={styles.productCard}
                 onClick={() => addItemToCart(p)}
               >
@@ -608,17 +578,6 @@ function POSContent() {
                       {formatoQuetzal.format(item.subtotal)}
                     </div>
                     <div className={styles.qtyControl}>
-                      {/*<button
-                      className={styles.qtyBtn}
-                      title="Agregar datos de batería"
-                      onClick={() => openBatteryModal(item, index)} // Pasamos el item y su indice
-                      style={{
-                        color: "var(--color-primary)",
-                        background: "#fff7ed",
-                      }}
-                    >
-                      <Battery size={14} />
-                    </button>*/}
                       <button
                         className={styles.qtyBtn}
                         onClick={() => updateQuantity(item.id, -1)}
@@ -700,99 +659,6 @@ function POSContent() {
           </div>
         </div>
 
-        {batteryModalOpen && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
-              <h3 style={{ marginTop: 0 }}>
-                {editingCartIndex !== null
-                  ? "Editar Batería"
-                  : "Detalles de Batería"}
-              </h3>
-              <p>
-                Producto: <b>{pendingBattery?.nombre}</b>
-              </p>
-
-              <div style={{ marginBottom: 15 }}>
-                <label style={{ display: "block", marginBottom: 5 }}>
-                  Meses de Garantía
-                </label>
-                <input
-                  type="number"
-                  value={warrantyData.meses}
-                  onChange={(e) =>
-                    setWarrantyData({
-                      ...warrantyData,
-                      meses: parseInt(e.target.value),
-                    })
-                  }
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    border: "1px solid #ccc",
-                    borderRadius: 4,
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 15 }}>
-                <label style={{ display: "block", marginBottom: 5 }}>
-                  Código Único (Manual)
-                </label>
-                <input
-                  type="text"
-                  value={warrantyData.codigo_unico}
-                  onChange={(e) =>
-                    setWarrantyData({
-                      ...warrantyData,
-                      codigo_unico: e.target.value,
-                    })
-                  }
-                  placeholder="Escribe el código grabado en la batería"
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    border: "1px solid #ccc",
-                    borderRadius: 4,
-                  }}
-                />
-              </div>
-
-              <div
-                style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
-              >
-                <button
-                  onClick={() => {
-                    setBatteryModalOpen(false);
-                    setPendingBattery(null);
-                    setEditingCartIndex(null);
-                  }}
-                  style={{
-                    padding: "8px 15px",
-                    border: "none",
-                    background: "#eee",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={saveBatteryDetails}
-                  style={{
-                    padding: "8px 15px",
-                    border: "none",
-                    background: "var(--color-primary)",
-                    color: "white",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                  }}
-                >
-                  {editingCartIndex !== null ? "Actualizar" : "Agregar"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         {customItemModalOpen && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
@@ -907,6 +773,90 @@ function POSContent() {
                   style={{ width: "auto", padding: "10px 25px" }}
                 >
                   Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {liquidModalOpen && pendingLiquidProduct && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+              <h3 style={{ marginTop: 0, color: "var(--color-primary)" }}>
+                Venta de Líquido / Granel
+              </h3>
+              <p>
+                Producto: <b>{pendingLiquidProduct.nombre}</b>
+              </p>
+
+              {pendingLiquidProduct.origen === "parcial" ? (
+                <div
+                  style={{
+                    background: "#e0f2fe",
+                    padding: 10,
+                    borderRadius: 4,
+                    marginBottom: 15,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <b>Botella Abierta</b>
+                  <br />
+                  Disponible: {pendingLiquidProduct.stock}{" "}
+                  {pendingLiquidProduct.unidad_medida}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    background: "#f0fdf4",
+                    padding: 10,
+                    borderRadius: 4,
+                    marginBottom: 15,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <b>Botella Nueva (Cerrada)</b>
+                  <br />
+                  Capacidad: {pendingLiquidProduct.capacidad}{" "}
+                  {pendingLiquidProduct.unidad_medida}
+                </div>
+              )}
+
+              <div style={{ marginBottom: 20 }}>
+                <label className={styles.label}>
+                  Cantidad a Vender ({pendingLiquidProduct.unidad_medida})
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  autoFocus
+                  className={styles.searchInput}
+                  placeholder="Ej: 0.5, 1.5..."
+                  value={liquidQuantity}
+                  onChange={(e) => setLiquidQuantity(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && confirmLiquidAdd()}
+                />
+              </div>
+
+              <div
+                style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
+              >
+                <button
+                  onClick={() => setLiquidModalOpen(false)}
+                  style={{
+                    padding: "10px 20px",
+                    border: "1px solid #ccc",
+                    background: "transparent",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmLiquidAdd}
+                  className={styles.payButton}
+                  style={{ width: "auto", padding: "10px 25px" }}
+                >
+                  Confirmar
                 </button>
               </div>
             </div>

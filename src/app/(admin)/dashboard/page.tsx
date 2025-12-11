@@ -11,20 +11,13 @@ import {
   Cell,
 } from "recharts";
 import { formatoQuetzal } from "@/lib/utils";
-import {
-  DollarSign,
-  TrendingUp,
-  Package,
-  AlertTriangle,
-  Calendar,
-} from "lucide-react";
+import { DollarSign, TrendingUp, Package, AlertTriangle } from "lucide-react";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
-  const [chartFilter, setChartFilter] = useState("week"); // week, month, year
+  const [chartFilter, setChartFilter] = useState("week"); //week, month, year
 
-  //Este useEffect carga los KPIs y tablas
   useEffect(() => {
     fetch("/api/dashboard/summary")
       .then((res) => res.json())
@@ -53,7 +46,7 @@ export default function DashboardPage() {
         Dashboard general
       </h1>
 
-      {/* sección de los KPIs */}
+      {/*sección de los KPIs*/}
       <div
         style={{
           display: "grid",
@@ -80,11 +73,11 @@ export default function DashboardPage() {
           title="Valor Inventario"
           value={formatoQuetzal.format(stats.inventarioTotal)}
           icon={<Package size={24} color="white" />}
-          color="#3b82f6" // Azul
+          color="#3b82f6"
         />
       </div>
 
-      {/* sección de la gráfica de ventas*/}
+      {/*sección de la gráfica de ventas*/}
       <div
         style={{
           background: "white",
@@ -134,7 +127,6 @@ export default function DashboardPage() {
                 fill="var(--color-secondary)"
                 radius={[4, 4, 0, 0]}
               >
-                {/* Truco visual: La barra actual de otro color */}
                 {chartData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
@@ -151,7 +143,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/*sección de tablas inferiores del la gráfica */}
+      {/*sección de tablas inferiores del la gráfica*/}
       <div
         style={{
           display: "grid",
@@ -159,7 +151,7 @@ export default function DashboardPage() {
           gap: 20,
         }}
       >
-        {/* sección de bajo stock */}
+        {/*sección de bajo stock*/}
         <div
           style={{
             background: "white",
@@ -229,7 +221,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* sección de top 5 productos vendidos */}
+        {/*sección de top 5 productos vendidos*/}
         <div
           style={{
             background: "white",
@@ -313,7 +305,7 @@ export default function DashboardPage() {
   );
 }
 
-// Componente para las cards
+//componente para las cards
 function KpiCard({ title, value, icon, color }: any) {
   return (
     <div

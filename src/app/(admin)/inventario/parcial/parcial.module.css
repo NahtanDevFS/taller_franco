@@ -1,0 +1,78 @@
+.container {
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.title {
+  color: var(--color-secondary);
+  font-size: 1.5rem;
+}
+
+.tableContainer {
+  overflow-x: auto;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  background-color: var(--color-secondary);
+  color: white;
+  padding: 12px;
+  font-size: 16px;
+}
+
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+}
+
+.btnIcon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--color-secondary);
+  margin-right: 10px;
+}
+
+.btnDelete {
+  color: #ef4444;
+}
+
+.btnDelete:hover {
+  background-color: #fee2e2;
+  border-radius: 4px;
+}
+
+.badge {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+@media (max-width: 900px) {
+  .table th,
+  .table td {
+    font-size: 14px;
+  }
+  .title {
+    font-size: 18px;
+  }
+}

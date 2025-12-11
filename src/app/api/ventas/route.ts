@@ -81,18 +81,17 @@ export async function POST(request: Request) {
 
     const estadoFinal = estado || "completada";
 
-    // crear la nueva venta
     const ventaRes = await client.query(
       "INSERT INTO ventas (usuario_id, total, estado, cliente) VALUES ($1, $2, $3, $4) RETURNING id",
       [usuario_id, total, estadoFinal, cliente || "CF"]
     );
     const ventaId = ventaRes.rows[0].id;
 
-    //insertar detalles y restar el stock de la tabla de productos
+    // Insertar detalles y restar el stock
     for (const item of items) {
-      //obtenemos datos del producto con el tipo
+      // Obtener datos frescos del producto
       const prodRes = await client.query(
-        "SELECT stock, tipo, nombre FROM productos WHERE id = $1",
+        "SELECT stock, tipo, nombre, es_liquido, capacidad FROM productos WHERE id = $1",
         [item.producto_id]
       );
 
@@ -102,18 +101,79 @@ export async function POST(request: Request) {
 
       const productoDB = prodRes.rows[0];
 
-      //validación de stock solo si es tipo producto, si es servicio o tercero, ignoramos el stock
+      //variable para rastrear si esta venta abrió una botella (creó un parcial), esto es crucial para que el botón "Anular" sepa qué borrar después
+      let createdParcialId = null;
+
       if (productoDB.tipo === "producto") {
-        if (productoDB.stock < item.cantidad) {
-          throw new Error(
-            `Stock insuficiente para ${productoDB.nombre}. Disponibles: ${productoDB.stock}`
+        if (item.datos_extra?.es_item_parcial && item.datos_extra?.parcial_id) {
+          const parcialId = item.datos_extra.parcial_id;
+
+          const parcCheck = await client.query(
+            "SELECT cantidad_restante FROM inventario_parcial WHERE id=$1",
+            [parcialId]
           );
+          if (
+            parcCheck.rows.length === 0 ||
+            parcCheck.rows[0].cantidad_restante < item.cantidad
+          ) {
+            throw new Error(`El item abierto ya no tiene suficiente cantidad.`);
+          }
+
+          await client.query(
+            "UPDATE inventario_parcial SET cantidad_restante = cantidad_restante - $1 WHERE id = $2",
+            [item.cantidad, parcialId]
+          );
+
+          await client.query(
+            "UPDATE inventario_parcial SET activo = false WHERE id = $1 AND cantidad_restante <= 0.01",
+            [parcialId]
+          );
+        } else {
+          if (productoDB.stock < 1) {
+            throw new Error(
+              `Stock insuficiente para ${productoDB.nombre}. Disponibles: ${productoDB.stock}`
+            );
+          }
+
+          let stockARestar = item.cantidad;
+          let remanente = 0;
+
+          if (productoDB.es_liquido && productoDB.capacidad > 0) {
+            //ejemplo de venta 7L, Capacidad 5L - 7 / 5 = 1.4 -> necesito 2 botellas
+            const botellasNecesarias = Math.ceil(
+              item.cantidad / productoDB.capacidad
+            );
+            stockARestar = botellasNecesarias;
+
+            const totalLiquido = botellasNecesarias * productoDB.capacidad;
+            remanente = totalLiquido - item.cantidad;
+          }
+          await client.query(
+            "UPDATE productos SET stock = stock - $1 WHERE id = $2",
+            [stockARestar, item.producto_id]
+          );
+
+          if (remanente > 0) {
+            const codigoRef = `OPEN-${Date.now()}-${Math.floor(
+              Math.random() * 1000
+            )}`;
+            const parcRes = await client.query(
+              `INSERT INTO inventario_parcial (producto_id, cantidad_restante, codigo_referencia)
+               VALUES ($1, $2, $3) RETURNING id`,
+              [item.producto_id, remanente, codigoRef]
+            );
+            createdParcialId = parcRes.rows[0].id;
+          }
         }
       }
 
-      const datosExtra = item.datos_extra
-        ? JSON.stringify(item.datos_extra)
-        : null;
+      const datosExtraObj = item.datos_extra || {};
+
+      if (createdParcialId) {
+        datosExtraObj.created_parcial_id = createdParcialId;
+      }
+
+      const datosExtraJson = JSON.stringify(datosExtraObj);
 
       await client.query(
         `
@@ -124,19 +184,11 @@ export async function POST(request: Request) {
           ventaId,
           item.producto_id,
           item.cantidad,
-          item.precio, //usamos el precio que viene del frontend ya que es importante para servicios con precio variable
+          item.precio,
           item.cantidad * item.precio,
-          datosExtra,
+          datosExtraJson,
         ]
       );
-
-      //resta de stock solo si es tipo producto
-      if (productoDB.tipo === "producto") {
-        await client.query(
-          "UPDATE productos SET stock = stock - $1 WHERE id = $2",
-          [item.cantidad, item.producto_id]
-        );
-      }
     }
 
     await client.query("COMMIT");

@@ -26,12 +26,16 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit;
 
   try {
-    let whereClauses = ["p.tipo = 'producto'"];
+    // --- CONSTRUCCIÓN DE FILTROS COMUNES ---
+    // Usamos 'p' como alias para la tabla de productos en ambas queries
+    let whereClauses = [];
     let values = [];
     let paramCounter = 1;
 
     if (search) {
-      whereClauses.push(`p.nombre ILIKE $${paramCounter}`);
+      whereClauses.push(
+        `(p.nombre ILIKE $${paramCounter} OR p.codigo_barras ILIKE $${paramCounter})`
+      );
       values.push(`%${search}%`);
       paramCounter++;
     }
@@ -46,31 +50,59 @@ export async function GET(request: Request) {
       paramCounter++;
     }
 
-    const whereString =
-      whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+    const whereBase =
+      whereClauses.length > 0 ? `AND ${whereClauses.join(" AND ")}` : "";
 
-    const sql = `
-      SELECT p.*, m.nombre as marca_nombre, c.nombre as categoria_nombre 
+    const productosSql = `
+      SELECT 
+        p.id, p.nombre, p.codigo_barras, p.precio, p.stock, 
+        p.tipo, p.es_liquido, p.capacidad, p.unidad_medida,
+        m.nombre as marca_nombre, c.nombre as categoria_nombre,
+        'catalogo' as origen, null as parcial_id
       FROM productos p
       LEFT JOIN marcas m ON p.marca_id = m.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
-      ${whereString}
+      WHERE p.tipo = 'producto' 
+      AND p.stock > 0
+      ${whereBase}
       ORDER BY p.created_at DESC
       LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
     `;
 
-    const countSql = `SELECT COUNT(*) FROM productos p ${whereString}`;
+    const parcialesSql = `
+      SELECT 
+        p.id, 
+        ('[ABIERTO] ' || p.nombre) as nombre, 
+        ip.codigo_referencia as codigo_barras, 
+        p.precio, 
+        ip.cantidad_restante as stock, 
+        p.tipo, p.es_liquido, p.capacidad, p.unidad_medida,
+        m.nombre as marca_nombre, c.nombre as categoria_nombre,
+        'parcial' as origen, ip.id as parcial_id
+      FROM inventario_parcial ip
+      JOIN productos p ON ip.producto_id = p.id
+      LEFT JOIN marcas m ON p.marca_id = m.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      WHERE ip.activo = true 
+      AND ip.cantidad_restante > 0
+      ${whereBase}
+      ORDER BY ip.created_at DESC
+    `;
 
     const queryValues = [...values, limit, offset];
-    const countValues = [...values];
 
-    const [productosRes, countRes] = await Promise.all([
-      pool.query(sql, queryValues),
-      pool.query(countSql, countValues),
+    const [productosRes, parcialesRes] = await Promise.all([
+      pool.query(productosSql, queryValues),
+      pool.query(parcialesSql, values),
     ]);
 
+    const dataCombinada = [...parcialesRes.rows, ...productosRes.rows];
+
+    const countSql = `SELECT COUNT(*) FROM productos p WHERE p.tipo = 'producto' ${whereBase}`;
+    const countRes = await pool.query(countSql, values);
+
     return NextResponse.json({
-      data: productosRes.rows,
+      data: dataCombinada,
       total: parseInt(countRes.rows[0].count),
       page,
       totalPages: Math.ceil(parseInt(countRes.rows[0].count) / limit),
@@ -103,6 +135,9 @@ export async function POST(request: Request) {
       nueva_marca_nombre,
       categoria_id,
       es_bateria,
+      es_liquido,
+      capacidad,
+      unidad_medida,
     } = body;
 
     //limpiar código de barras: si es "", lo volvemos NULL para no romper la restricción UNIQUE
@@ -142,8 +177,8 @@ export async function POST(request: Request) {
     //query para insertar el producto
     const insertSql = `
       INSERT INTO productos 
-      (nombre, codigo_barras, precio, stock, stock_minimo, marca_id, categoria_id, es_bateria)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      (nombre, codigo_barras, precio, stock, stock_minimo, marca_id, categoria_id, es_bateria, es_liquido, capacidad, unidad_medida)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `;
 
@@ -156,6 +191,9 @@ export async function POST(request: Request) {
       finalMarcaId,
       finalCategoriaId,
       es_bateria || false,
+      es_liquido || false,
+      capacidad || 1,
+      unidad_medida || "Litros",
     ]);
 
     await client.query("COMMIT");

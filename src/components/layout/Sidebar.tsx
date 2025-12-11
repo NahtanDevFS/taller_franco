@@ -11,6 +11,7 @@ import {
   BatteryCharging,
   LogOut,
   X,
+  PackageOpen,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -43,6 +44,11 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
       name: "Baterías",
       path: "/ventas/baterias",
       icon: <BatteryCharging size={20} />,
+    },
+    {
+      name: "Productos abiertos",
+      path: "/inventario/parcial",
+      icon: <PackageOpen size={20} />,
     },
   ];
 

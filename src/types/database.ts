@@ -1,8 +1,7 @@
-// Tipo para el JSON de detalles, este es para poner información de las baterías
 export interface DatosExtraBateria {
   garantia_anios?: number;
   fecha_fin_garantia?: string;
-  [key: string]: any; // Permite otros campos si fuera necesario
+  [key: string]: any;
 }
 
 export interface Producto {
@@ -18,6 +17,9 @@ export interface Producto {
   url_imagen: string | null;
   es_bateria: boolean;
   tipo: "producto" | "servicio" | "tercero";
+  es_liquido: boolean;
+  capacidad: number;
+  unidad_medida: string;
   created_at: string;
 }
 
@@ -48,7 +50,7 @@ export interface DetalleVenta {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
-  datos_extra: DatosExtraBateria | null; // la interfaz de los datos extra para las baterías
+  datos_extra: DatosExtraBateria | null; //la interfaz de los datos extra para las baterías
 }
 
 // Tipo auxiliar para uso de JOINs
@@ -58,6 +60,21 @@ export interface VentaCompleta extends Venta {
 }
 
 export interface ProductoVenta extends Producto {
-  marca_nombre?: string; // Viene del JOIN
-  categoria_nombre?: string; // Viene del JOIN
+  marca_nombre?: string; //viene del JOIN
+  categoria_nombre?: string; //viene del JOIN
+}
+
+export interface ProductoBuscador extends Producto {
+  origen: "catalogo" | "parcial"; //para saber si viene de la tabla de los productos o de los productos parciales
+  parcial_id?: number; //id de la tabla inventario_parcial si es necesario
+}
+
+export interface InventarioParcial {
+  id: number;
+  producto_id: number;
+  cantidad_restante: number;
+  codigo_referencia: string;
+  activo: boolean;
+  producto?: Producto; //para cuando hacemos JOIN
+  created_at: string;
 }

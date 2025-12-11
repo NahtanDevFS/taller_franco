@@ -33,19 +33,16 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Verificamos si hay usuario
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Si no hay usuario y no está en login, redirigir a login
   if (!user && !request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // Si ya hay usuario y está intentando entrar al login, mandarlo al dashboard
   if (user && request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";

@@ -20,6 +20,9 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       nueva_marca_nombre,
       categoria_id,
       es_bateria,
+      es_liquido,
+      capacidad,
+      unidad_medida,
     } = body;
 
     //limpieza de datos
@@ -58,8 +61,11 @@ export async function PUT(request: Request, { params }: { params: Params }) {
         stock_minimo = $5, 
         marca_id = $6, 
         categoria_id = $7,
-        es_bateria = $8
-      WHERE id = $9
+        es_bateria = $8,
+        es_liquido = $9,
+        capacidad = $10,
+        unidad_medida = $11
+      WHERE id = $12
       RETURNING *
     `;
 
@@ -72,6 +78,9 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       finalMarcaId,
       finalCategoriaId,
       es_bateria || false,
+      es_liquido || false,
+      capacidad || 1,
+      unidad_medida || "Litros",
       id,
     ]);
 
@@ -93,12 +102,12 @@ export async function PUT(request: Request, { params }: { params: Params }) {
 export async function DELETE(request: Request, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    //si el producto ya tiene ventas asociadas, esto fallará por la Foreign Key, eso es bueno para mantener la integridad de los datos históricos.
+    //si el producto ya tiene ventas asociadas, esto fallará por la foreign key, para mantener la integridad de los datos históricos
     await pool.query("DELETE FROM productos WHERE id = $1", [id]);
 
     return NextResponse.json({ message: "Producto eliminado" });
   } catch (error: any) {
-    // Código 23503 es violación de Foreign Key en postgres (tiene ventas)
+    //código 23503 es violación de Foreign Key en postgres (tiene ventas)
     if (error.code === "23503") {
       return NextResponse.json(
         {
