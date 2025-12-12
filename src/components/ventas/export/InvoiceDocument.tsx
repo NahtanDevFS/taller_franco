@@ -141,7 +141,7 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
         <Page size={[227, calculatedHeight]} style={styles.page}>
           <View style={styles.header}>
             <Text style={styles.brandTitle}>TALLER FRANCO</Text>
-            <Text style={styles.brandSubtitle}>Repuestos y Servicios</Text>
+            <Text style={styles.brandSubtitle}>Taller y repuestos</Text>
             <Text style={styles.brandSubtitle}>Estanzuela, Zacapa</Text>
             <Text style={styles.ticketId}>TICKET-{venta.id}</Text>
             <Text style={{ fontSize: 9, marginTop: 4 }}>{fecha}</Text>
@@ -230,7 +230,7 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
               * Documento no válido para crédito fiscal *
             </Text>
             <Text style={{ fontSize: 8, marginTop: 5, color: "#888" }}>
-              Gracias por su compra
+              Gracias por su preferencia
             </Text>
           </View>
         </Page>
@@ -245,7 +245,7 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
           <View>
             <Text style={styles.letterBrand}>TALLER FRANCO</Text>
             <Text style={{ color: "#555", fontSize: 10 }}>
-              Venta de Repuestos y Servicios
+              Taller y venta de repuestos
             </Text>
             <Text style={{ color: "#555", fontSize: 10 }}>
               Estanzuela, Zacapa
