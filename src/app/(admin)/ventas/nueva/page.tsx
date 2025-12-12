@@ -460,17 +460,7 @@ function POSContent() {
               <button
                 type="button"
                 onClick={() => setScannerOpen(true)}
-                style={{
-                  background: "var(--color-secondary)",
-                  border: "none",
-                  borderRadius: "var(--border-radius)",
-                  color: "white",
-                  padding: "0 15px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
+                className={styles.scanButton}
                 title="Abrir Cámara"
               >
                 <ScanBarcode size={20} />
@@ -480,16 +470,6 @@ function POSContent() {
               <button
                 onClick={() => setCustomItemModalOpen(true)}
                 className={styles.btnSecondary}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "white",
-                  border: "2px dashed var(--color-primary)",
-                  color: "var(--color-primary)",
-                  borderRadius: 8,
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                }}
               >
                 + Agregar Mano de Obra / Externo
               </button>
@@ -529,15 +509,10 @@ function POSContent() {
             <small>{new Date().toLocaleDateString()}</small>
           </div>
 
-          <div style={{ padding: "15px 15px 0" }}>
+          <div className={styles.clientInputContainer}>
             <input
-              style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: 6,
-                border: "1px solid #ccc",
-              }}
-              placeholder="Nombre del Cliente (Opcional)"
+              className={styles.clientInput}
+              placeholder="Nombre del Cliente (opcional)"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
             />
@@ -615,14 +590,7 @@ function POSContent() {
               <span>Total</span>
               <span>{formatoQuetzal.format(total)}</span>
             </div>
-            <div
-              style={{
-                marginBottom: 15,
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
+            <div className={styles.pendingWrapper}>
               <input
                 type="checkbox"
                 id="pendingCheck"
@@ -632,23 +600,19 @@ function POSContent() {
               />
               <label
                 htmlFor="pendingCheck"
-                style={{
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  color: isPending ? "#eab308" : "#64748b",
-                }}
+                className={`${styles.pendingLabel} ${
+                  isPending ? styles.pendingLabelActive : ""
+                }`}
               >
                 {isPending ? "Cobro inmediato" : "Venta pendiente de pago"}
               </label>
             </div>
             <button
-              className={styles.payButton}
+              className={`${styles.payButton} ${
+                isPending ? styles.payButtonPending : ""
+              }`}
               onClick={handlePay}
               disabled={cart.length === 0 || loadingPay}
-              //cambiamos el color si es pendiente para que sea visualmente obvio
-              style={{
-                background: isPending ? "#eab308" : "var(--color-primary)",
-              }}
             >
               {loadingPay
                 ? "Procesando..."
@@ -682,18 +646,11 @@ function POSContent() {
                     onClick={() =>
                       setCustomItemData({ ...customItemData, tipo: "servicio" })
                     }
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      borderRadius: 6,
-                      border: "1px solid #ccc",
-                      background:
-                        customItemData.tipo === "servicio"
-                          ? "var(--color-secondary)"
-                          : "white",
-                      color:
-                        customItemData.tipo === "servicio" ? "white" : "black",
-                    }}
+                    className={`${styles.typeBtn} ${
+                      customItemData.tipo === "servicio"
+                        ? styles.typeBtnActiveSecondary
+                        : ""
+                    }`}
                   >
                     Mano de obra
                   </button>
@@ -702,18 +659,11 @@ function POSContent() {
                     onClick={() =>
                       setCustomItemData({ ...customItemData, tipo: "tercero" })
                     }
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      borderRadius: 6,
-                      border: "1px solid #ccc",
-                      background:
-                        customItemData.tipo === "tercero"
-                          ? "var(--color-primary)"
-                          : "white",
-                      color:
-                        customItemData.tipo === "tercero" ? "white" : "black",
-                    }}
+                    className={`${styles.typeBtn} ${
+                      customItemData.tipo === "tercero"
+                        ? styles.typeBtnActivePrimary
+                        : ""
+                    }`}
                   >
                     Producto externo
                   </button>

@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { formatoQuetzal } from "@/lib/utils";
 import { DollarSign, TrendingUp, Package, AlertTriangle } from "lucide-react";
+import styles from "@/app/(admin)/dashboard/dashboard.module.css";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -33,28 +34,14 @@ export default function DashboardPage() {
       .catch((err) => console.error(err));
   }, [chartFilter]);
 
-  if (!stats) return <div style={{ padding: 20 }}>Cargando Dashboard...</div>;
+  if (!stats)
+    return <div className={styles.container}>Cargando Dashboard...</div>;
   return (
-    <div style={{ padding: 20 }}>
-      <h1
-        style={{
-          color: "var(--color-secondary)",
-          marginBottom: 20,
-          fontSize: "1.5rem",
-        }}
-      >
-        Dashboard general
-      </h1>
+    <div className={styles.container}>
+      <h1 className={styles.title}>Dashboard general</h1>
 
       {/*sección de los KPIs*/}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: 20,
-          marginBottom: 30,
-        }}
-      >
+      <div className={styles.kpiGrid}>
         <KpiCard
           title="Ventas de Hoy"
           value={formatoQuetzal.format(stats.ventasHoy)}
@@ -78,30 +65,13 @@ export default function DashboardPage() {
       </div>
 
       {/*sección de la gráfica de ventas*/}
-      <div
-        style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 8,
-          boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-          marginBottom: 30,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-          }}
-        >
-          <h3 style={{ margin: 0, color: "var(--color-secondary)" }}>
-            Tendencia de Ventas
-          </h3>
+      <div className={styles.chartSection}>
+        <div className={styles.chartHeader}>
+          <h3 className={styles.chartTitle}>Tendencia de Ventas</h3>
           <select
             value={chartFilter}
             onChange={(e) => setChartFilter(e.target.value)}
-            style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+            className={styles.selectInput}
           >
             <option value="day">Hoy (Por horas)</option>
             <option value="week">Última Semana</option>
@@ -144,30 +114,10 @@ export default function DashboardPage() {
       </div>
 
       {/*sección de tablas inferiores del la gráfica*/}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: 20,
-        }}
-      >
+      <div className={styles.tablesGrid}>
         {/*sección de bajo stock*/}
-        <div
-          style={{
-            background: "white",
-            padding: 20,
-            borderRadius: 8,
-            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 15,
-            }}
-          >
+        <div className={styles.tableCard}>
+          <div className={styles.tableHeader}>
             <AlertTriangle color="#ef4444" />
             <h3 style={{ margin: 0, color: "#ef4444" }}>
               Alerta de Stock Bajo
@@ -222,22 +172,8 @@ export default function DashboardPage() {
         </div>
 
         {/*sección de top 5 productos vendidos*/}
-        <div
-          style={{
-            background: "white",
-            padding: 20,
-            borderRadius: 8,
-            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 15,
-            }}
-          >
+        <div className={styles.tableCard}>
+          <div className={styles.tableHeader}>
             <Package color="var(--color-secondary)" />
             <h3 style={{ margin: 0, color: "var(--color-secondary)" }}>
               Top 5 Más Vendidos (Mes)
@@ -308,42 +244,18 @@ export default function DashboardPage() {
 //componente para las cards
 function KpiCard({ title, value, icon, color }: any) {
   return (
-    <div
-      style={{
-        background: "white",
-        padding: 20,
-        borderRadius: 8,
-        boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-        display: "flex",
-        alignItems: "center",
-        gap: 20,
-      }}
-    >
+    <div className={styles.kpiCard}>
       <div
+        className={styles.kpiIconWrapper}
         style={{
           background: color,
-          padding: 15,
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
         }}
       >
         {icon}
       </div>
       <div>
-        <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem" }}>
-          {title}
-        </p>
-        <h2
-          style={{
-            margin: "5px 0 0 0",
-            fontSize: "1.5rem",
-            color: "var(--color-text)",
-          }}
-        >
-          {value}
-        </h2>
+        <p className={styles.kpiTitle}>{title}</p>
+        <h2 className={styles.kpiValue}>{value}</h2>
       </div>
     </div>
   );

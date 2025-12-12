@@ -213,121 +213,79 @@ export default function HistorialVentasPage() {
     }
   };
 
+  const getStatusBadgeClass = (estado: string) => {
+    switch (estado) {
+      case "anulada":
+        return stylesHistorial.badgeAnulada;
+      case "pendiente":
+        return stylesHistorial.badgePendiente;
+      default:
+        return stylesHistorial.badgeCompletada;
+    }
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <Toaster position="top-right" richColors />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 20,
-        }}
-      >
-        <h1
-          className={stylesHistorial.titleVentas}
-          style={{ color: "var(--color-secondary)", margin: 0 }}
-        >
-          Historial de ventas
-        </h1>
+      <div className={stylesHistorial.header}>
+        <h1 className={stylesHistorial.titleVentas}>Historial de ventas</h1>
         <Link href="/ventas/nueva" style={{ textDecoration: "none" }}>
-          <button
-            className={stylesHistorial.buttonPOS}
-            style={{
-              backgroundColor: "var(--color-primary)",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: 8,
-              fontSize: "1rem",
-              fontWeight: "bold",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              boxShadow: "0 4px 6px rgba(249, 115, 22, 0.2)",
-            }}
-          >
+          <button className={stylesHistorial.buttonPOS}>
             <ShoppingCart size={20} /> Nueva venta (POS)
           </button>
         </Link>
       </div>
 
-      <div className={styles.filterBar} style={{ marginBottom: 20 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            style={{ fontWeight: "bold", color: "var(--color-text-muted)" }}
-          >
-            Filtrar por fecha:
-          </span>
+      <div className={`${styles.filterBar} ${stylesHistorial.filterContainer}`}>
+        <span style={{ fontWeight: "bold", color: "var(--color-text-muted)" }}>
+          Filtrar por fecha:
+        </span>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: "0.9rem" }}>Desde:</span>
-            <input
-              type="date"
-              className={styles.input}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              style={{ padding: "8px", maxWidth: 150 }}
-            />
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: "0.9rem" }}>Hasta:</span>
-            <input
-              type="date"
-              className={styles.input}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              style={{ padding: "8px", maxWidth: 150 }}
-            />
-          </div>
-
-          <button
-            onClick={handleFilter}
-            className={styles.btnPrimary}
-            style={{
-              padding: "8px 15px",
-              fontSize: "0.9rem",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <Filter size={16} /> Filtrar
-          </button>
-
-          {(startDate || endDate) && (
-            <button
-              onClick={clearFilters}
-              className={styles.clearBtn}
-              title="Limpiar filtros"
-            >
-              <X size={18} />
-            </button>
-          )}
+        <div className={stylesHistorial.dateGroup}>
+          <span className={stylesHistorial.dateLabel}>Desde:</span>
+          <input
+            type="date"
+            className={stylesHistorial.dateInput}
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
         </div>
-        <div style={{ height: 24, width: 1, background: "#cbd5e1" }}></div>
-        <label
+
+        <div className={stylesHistorial.dateGroup}>
+          <span style={{ fontSize: "0.9rem" }}>Hasta:</span>
+          <input
+            type="date"
+            className={stylesHistorial.dateInput}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+
+        <button
+          onClick={handleFilter}
+          className={styles.btnPrimary}
           style={{
+            padding: "8px 15px",
+            fontSize: "0.9rem",
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            cursor: "pointer",
-            userSelect: "none",
-            background: "white",
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #e2e8f0",
+            gap: 5,
           }}
         >
+          <Filter size={16} /> Filtrar
+        </button>
+
+        {(startDate || endDate) && (
+          <button
+            onClick={clearFilters}
+            className={styles.clearBtn}
+            title="Limpiar filtros"
+          >
+            <X size={18} />
+          </button>
+        )}
+        <div style={{ height: 24, width: 1, background: "#cbd5e1" }}></div>
+        <label className={stylesHistorial.checkboxContainer}>
           <input
             type="checkbox"
             checked={showAnuladas}
@@ -335,11 +293,7 @@ export default function HistorialVentasPage() {
             style={{ width: 16, height: 16, cursor: "pointer" }}
           />
           <span
-            style={{
-              fontSize: "0.9rem",
-              color: showAnuladas ? "#ef4444" : "inherit",
-              fontWeight: showAnuladas ? "bold" : "normal",
-            }}
+            className={showAnuladas ? stylesHistorial.checkboxLabelAnulada : ""}
           >
             Mostrar Anuladas
           </span>
@@ -350,13 +304,13 @@ export default function HistorialVentasPage() {
         <table className={styles.table}>
           <thead>
             <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
-              <th style={{ padding: 12 }}>ID</th>
-              <th style={{ padding: 12 }}>Fecha</th>
-              <th style={{ padding: 12 }}>Vendedor</th>
-              <th style={{ padding: 12 }}>Cliente</th>
-              <th style={{ padding: 12 }}>Total</th>
-              <th style={{ padding: 12 }}>Estado</th>
-              <th style={{ padding: 12 }}>Acciones</th>
+              <th className={stylesHistorial.tableCell}>ID</th>
+              <th className={stylesHistorial.tableCell}>Fecha</th>
+              <th className={stylesHistorial.tableCell}>Vendedor</th>
+              <th className={stylesHistorial.tableCell}>Cliente</th>
+              <th className={stylesHistorial.tableCell}>Total</th>
+              <th className={stylesHistorial.tableCell}>Estado</th>
+              <th className={stylesHistorial.tableCell}>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -370,43 +324,28 @@ export default function HistorialVentasPage() {
               ventas.map((v) => (
                 <tr
                   key={v.id}
-                  style={{
-                    borderBottom: "1px solid #eee",
-                    opacity: v.estado === "anulada" ? 0.6 : 1,
-                  }}
+                  className={
+                    v.estado === "anulada" ? stylesHistorial.rowAnulada : ""
+                  }
                 >
-                  <td style={{ padding: 12 }}>#{v.id}</td>
-                  <td style={{ padding: 12 }}>
+                  <td className={stylesHistorial.tableCell}>#{v.id}</td>
+                  <td className={stylesHistorial.tableCell}>
                     {new Date(v.fecha_venta).toLocaleString()}
                   </td>
-                  <td style={{ padding: 12 }}>{v.vendedor_nombre || "N/A"}</td>
-                  <td style={{ padding: 12 }}>{v.cliente || "CF"}</td>
+                  <td className={stylesHistorial.tableCell}>
+                    {v.vendedor_nombre || "N/A"}
+                  </td>
+                  <td className={stylesHistorial.tableCell}>
+                    {v.cliente || "CF"}
+                  </td>
                   <td style={{ padding: 12, fontWeight: "bold" }}>
                     {formatoQuetzal.format(v.total)}
                   </td>
                   <td style={{ padding: 12 }}>
                     <span
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        fontSize: "0.85rem",
-                        background:
-                          v.estado === "anulada"
-                            ? "#fee2e2"
-                            : v.estado === "pendiente"
-                            ? "#fef9c3"
-                            : "#dcfce7",
-                        color:
-                          v.estado === "anulada"
-                            ? "#ef4444"
-                            : v.estado === "pendiente"
-                            ? "#854d0e"
-                            : "#166534",
-                        border:
-                          v.estado === "pendiente"
-                            ? "1px solid #fde047"
-                            : "none",
-                      }}
+                      className={`${
+                        stylesHistorial.badge
+                      } ${getStatusBadgeClass(v.estado)}`}
                     >
                       {v.estado?.toUpperCase()}
                     </span>
@@ -414,14 +353,7 @@ export default function HistorialVentasPage() {
                   <td style={{ padding: 12 }}>
                     <button
                       onClick={() => verDetalles(v)}
-                      title="Ver Detalles"
-                      style={{
-                        marginRight: 10,
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "var(--color-secondary)",
-                      }}
+                      className={`${stylesHistorial.actionBtn} ${stylesHistorial.btnView}`}
                     >
                       <Eye size={18} />
                     </button>

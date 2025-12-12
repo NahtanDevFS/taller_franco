@@ -1,6 +1,149 @@
 .titleVentas {
   font-size: 1.5rem;
 }
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.buttonPOS {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 6px rgba(249, 115, 22, 0.2);
+  text-decoration: none;
+}
+
+.filterContainer {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  font-weight: bold;
+  color: var(--color-text-muted);
+}
+
+.dateGroup {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dateLabel {
+  font-size: 0.9rem;
+}
+
+.dateInput {
+  padding: 8px;
+  max-width: 150px;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+}
+
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.checkboxLabelAnulada {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.tableHeaderRow {
+  background: #f1f5f9;
+  text-align: left;
+}
+
+.tableCell {
+  padding: 12px;
+}
+
+.rowAnulada {
+  opacity: 0.6;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.badgeCompletada {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badgePendiente {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.badgeAnulada {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.actionBtn {
+  margin-right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.btnView {
+  color: var(--color-secondary);
+}
+.btnPay {
+  color: #16a34a;
+}
+.btnCancel {
+  color: #ef4444;
+}
+
+.paginationContainer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  align-items: center;
+}
+
+.pageBtn {
+  padding: 8px 15px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.pageBtnDisabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .titleVentas {
     font-size: 18px;

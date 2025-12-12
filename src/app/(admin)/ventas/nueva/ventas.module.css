@@ -171,7 +171,7 @@
   cursor: not-allowed;
 }
 
-/* Modal Batería */
+/*Modal batería*/
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -190,6 +190,133 @@
   padding: 25px;
   border-radius: var(--border-radius);
   width: 400px;
+}
+
+.scanButton {
+  background-color: var(--color-secondary);
+  border: none;
+  border-radius: var(--border-radius);
+  color: white;
+  padding: 0 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.2s;
+}
+
+.scanButton:hover {
+  background-color: #1e293b;
+}
+
+.btnSecondary {
+  width: 100%;
+  padding: 12px;
+  background-color: white;
+  border: 2px dashed var(--color-primary);
+  color: var(--color-primary);
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+.btnSecondary:hover {
+  background-color: #fff7ed;
+}
+
+.clientInputContainer {
+  padding: 15px 15px 0;
+}
+
+.clientInput {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.typeSelector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.typeBtn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: white;
+  color: black;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.typeBtnActivePrimary {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.typeBtnActiveSecondary {
+  background-color: var(--color-secondary);
+  color: white;
+  border-color: var(--color-secondary);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btnCancel {
+  padding: 10px 20px;
+  border: 1px solid #ccc;
+  background-color: transparent;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}
+
+.btnConfirm {
+  width: auto;
+  padding: 10px 25px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 50px;
+  color: #aaa;
+}
+
+.cartEmpty {
+  text-align: center;
+  color: #999;
+  margin-top: 20px;
+}
+
+.pendingWrapper {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pendingLabel {
+  cursor: pointer;
+  font-weight: bold;
+  color: #64748b;
+}
+
+.pendingLabelActive {
+  color: #eab308;
+}
+
+.payButtonPending {
+  background-color: #eab308 !important;
 }
 
 @media (max-width: 900px) {
