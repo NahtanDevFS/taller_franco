@@ -26,8 +26,7 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit;
 
   try {
-    // --- CONSTRUCCIÓN DE FILTROS COMUNES ---
-    // Usamos 'p' como alias para la tabla de productos en ambas queries
+    //usamos 'p' como alias para la tabla de productos en ambas queries
     let whereClauses = [];
     let values = [];
     let paramCounter = 1;
@@ -56,6 +55,7 @@ export async function GET(request: Request) {
     const productosSql = `
       SELECT 
         p.id, p.nombre, p.codigo_barras, p.precio, p.stock, 
+        p.stock_minimo, p.marca_id, p.categoria_id, p.es_bateria,
         p.tipo, p.es_liquido, p.capacidad, p.unidad_medida,
         m.nombre as marca_nombre, c.nombre as categoria_nombre,
         'catalogo' as origen, null as parcial_id
@@ -63,7 +63,6 @@ export async function GET(request: Request) {
       LEFT JOIN marcas m ON p.marca_id = m.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       WHERE p.tipo = 'producto' 
-      AND p.stock > 0
       ${whereBase}
       ORDER BY p.created_at DESC
       LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
@@ -76,6 +75,7 @@ export async function GET(request: Request) {
         ip.codigo_referencia as codigo_barras, 
         p.precio, 
         ip.cantidad_restante as stock, 
+        p.stock_minimo, p.marca_id, p.categoria_id, p.es_bateria,
         p.tipo, p.es_liquido, p.capacidad, p.unidad_medida,
         m.nombre as marca_nombre, c.nombre as categoria_nombre,
         'parcial' as origen, ip.id as parcial_id
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
       unidad_medida,
     } = body;
 
-    //limpiar código de barras: si es "", lo volvemos NULL para no romper la restricción UNIQUE
+    //limpiar código de barras si es "", lo volvemos NULL para no romper la restricción unique
     const finalCodigo =
       codigo_barras && codigo_barras.trim() !== "" ? codigo_barras : null;
 

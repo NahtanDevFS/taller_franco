@@ -60,6 +60,43 @@
   border: none;
 }
 
+.collapsed {
+  width: 70px;
+}
+
+.collapsed .logoArea {
+  display: none;
+}
+
+.collapsed .link {
+  justify-content: center;
+  padding: 15px 10px;
+}
+
+.collapsed .link span {
+  margin-right: 0 !important;
+}
+
+.toggleBtn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #e2e8f0;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px auto;
+  width: 80%;
+  transition: background 0.2s;
+}
+
+.toggleBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
 @media (max-width: 1024px) {
   .sidebar {
     transform: translateX(-100%);
@@ -69,6 +106,9 @@
   }
   .link {
     font-size: 14px;
+  }
+  .toggleBtn {
+    display: none;
   }
 }
 

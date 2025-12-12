@@ -10,13 +10,24 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className={styles.container}>
-      <Sidebar isOpen={sidebarOpen} closeMobile={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        closeMobile={() => setSidebarOpen(false)}
+        isCollapsed={isCollapsed}
+        toggleCollapse={() => setIsCollapsed(!isCollapsed)}
+      />
 
-      <div className={styles.mainContent}>
-        {/*barra superior para mobile*/}
+      <div
+        className={styles.mainContent}
+        style={{
+          marginLeft: isCollapsed ? "70px" : "250px",
+          width: isCollapsed ? "calc(100% - 70px)" : "calc(100% - 250px)",
+        }}
+      >
         <header className={styles.mobileHeader}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}

@@ -12,14 +12,23 @@ import {
   LogOut,
   X,
   PackageOpen,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
   closeMobile: () => void;
+  isCollapsed: boolean;
+  toggleCollapse: () => void;
 }
 
-export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
+export default function Sidebar({
+  isOpen,
+  closeMobile,
+  isCollapsed,
+  toggleCollapse,
+}: SidebarProps) {
   const pathname = usePathname();
   const supabase = createClient();
   const router = useRouter();
@@ -36,7 +45,7 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
       icon: <Package size={20} />,
     },
     {
-      name: "ventas",
+      name: "Ventas",
       path: "/ventas",
       icon: <ShoppingCart size={20} />,
     },
@@ -54,31 +63,50 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      throw error;
-    }
-
+    if (error) throw error;
     router.refresh();
     router.push("/login");
   };
 
   return (
-    <aside className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}>
-      <button className={styles.closeButton} onClick={closeMobile}>
+    <aside
+      className={`${styles.sidebar} ${isOpen ? styles.open : ""} ${
+        isCollapsed ? styles.collapsed : ""
+      }`}
+    >
+      <button
+        className={styles.closeButton}
+        onClick={closeMobile}
+        style={{ display: isOpen ? "flex" : "none" }}
+      >
         <X size={32} />
       </button>
-      <img
-        src="/taller_franco_logo.jpg"
-        alt="Logo Taller Franco"
-        style={{
-          width: "100px",
-          borderRadius: "50%",
-          margin: "0px auto",
-          marginTop: "0px",
-        }}
-      />
-      <div className={styles.logoArea}>Taller Franco</div>
+
+      <button
+        className={styles.toggleBtn}
+        onClick={toggleCollapse}
+        title={isCollapsed ? "Expandir menú" : "Retraer menú"}
+      >
+        {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+      </button>
+
+      <div style={{ textAlign: "center", padding: "10px 0" }}>
+        <img
+          src="/taller_franco_logo.jpg"
+          alt="Logo"
+          style={{
+            width: isCollapsed ? "40px" : "100px",
+            height: isCollapsed ? "40px" : "100px",
+            borderRadius: "50%",
+            margin: "0 auto",
+            transition: "all 0.3s ease",
+            objectFit: "cover",
+          }}
+        />
+      </div>
+
+      {!isCollapsed && <div className={styles.logoArea}>Taller Franco</div>}
+
       <nav className={styles.nav}>
         {menuItems.map((item) => (
           <Link
@@ -88,16 +116,27 @@ export default function Sidebar({ isOpen, closeMobile }: SidebarProps) {
               pathname === item.path ? styles.activeLink : ""
             }`}
             onClick={closeMobile}
+            title={isCollapsed ? item.name : ""}
           >
-            <span style={{ marginRight: "10px" }}>{item.icon}</span>
-            {item.name}
+            <span style={{ marginRight: isCollapsed ? "0" : "10px" }}>
+              {item.icon}
+            </span>
+            {!isCollapsed && item.name}
           </Link>
         ))}
       </nav>
+
       <div className={styles.nav}>
-        <button className={styles.link} onClick={handleLogout}>
-          <LogOut size={20} style={{ marginRight: "10px" }} />
-          Salir
+        <button
+          className={styles.link}
+          onClick={handleLogout}
+          title={isCollapsed ? "Salir" : ""}
+        >
+          <LogOut
+            size={20}
+            style={{ marginRight: isCollapsed ? "0" : "10px" }}
+          />
+          {!isCollapsed && "Salir"}
         </button>
       </div>
     </aside>

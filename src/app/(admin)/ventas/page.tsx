@@ -6,18 +6,16 @@ import Link from "next/link";
 import {
   Eye,
   Ban,
-  PlusCircle,
   ShoppingCart,
   Search,
   Trash2,
-  Plus,
-  Minus,
   Save,
   Filter,
   X,
   Banknote,
   Edit,
 } from "lucide-react";
+import ExportActions from "@/components/ventas/export/ExportActions";
 import styles from "../productos/productos.module.css";
 import stylesHistorial from "./historialVentas.module.css";
 
@@ -26,7 +24,7 @@ export default function HistorialVentasPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  //estados para filtros de fecha
+  //useStates para filtros de fecha
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showAnuladas, setShowAnuladas] = useState(false);
@@ -37,12 +35,11 @@ export default function HistorialVentasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
-  //estados para agregar productos extra
+  //useStates para agregar productos extra
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [itemsToAdd, setItemsToAdd] = useState<any[]>([]);
 
-  //función para cargar ventas con filtros
   const fetchVentas = async (p = page) => {
     const params = new URLSearchParams({
       page: p.toString(),
@@ -59,19 +56,18 @@ export default function HistorialVentasPage() {
     }
   };
 
-  // Recargar cuando cambia la página
   useEffect(() => {
     fetchVentas(page);
   }, [page]);
 
-  // Recargar al cambiar el checkbox de anuladas (reseteando a pág 1)
+  //recargar al cambiar el checkbox de anuladas (reseteando a pag 1)
   useEffect(() => {
     setPage(1);
     fetchVentas(1);
   }, [showAnuladas]);
 
   const handleFilter = () => {
-    setPage(1); // Volver a la primera página al filtrar
+    setPage(1);
     fetchVentas(1);
   };
 
@@ -80,7 +76,6 @@ export default function HistorialVentasPage() {
     setEndDate("");
     setShowAnuladas(false);
     setPage(1);
-    // Forzamos el fetch con valores vacíos
     fetch(`/api/ventas?page=1`)
       .then((res) => res.json())
       .then((data) => {
@@ -108,7 +103,7 @@ export default function HistorialVentasPage() {
         body: JSON.stringify({ estado: "completada" }),
       }).then(async (res) => {
         if (!res.ok) throw new Error("Error al procesar");
-        fetchVentas(); // Recargar la tabla
+        fetchVentas();
       }),
       {
         loading: "Procesando pago...",
@@ -146,14 +141,6 @@ export default function HistorialVentasPage() {
     const res = await fetch(`/api/ventas/${id}`);
     const data = await res.json();
     setDetallesVenta(data.detalles || []);
-  };
-
-  //lógica apara agregar productos extra a una venta ya hecha
-  const abrirModalAgregar = () => {
-    setAddModalOpen(true);
-    setSearchTerm("");
-    setSearchResults([]);
-    setItemsToAdd([]);
   };
 
   const buscarProductos = async (term: string) => {
@@ -229,8 +216,6 @@ export default function HistorialVentasPage() {
   return (
     <div style={{ padding: 20 }}>
       <Toaster position="top-right" richColors />
-
-      {/*cabecera*/}
       <div
         style={{
           display: "flex",
@@ -268,7 +253,6 @@ export default function HistorialVentasPage() {
         </Link>
       </div>
 
-      {/*barra con los filtros*/}
       <div className={styles.filterBar} style={{ marginBottom: 20 }}>
         <div
           style={{
@@ -362,7 +346,6 @@ export default function HistorialVentasPage() {
         </label>
       </div>
 
-      {/*tabla de ventas*/}
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -465,7 +448,7 @@ export default function HistorialVentasPage() {
                           background: "none",
                           border: "none",
                           cursor: "pointer",
-                          color: "#16a34a", // Verde
+                          color: "#16a34a",
                         }}
                       >
                         <Banknote size={18} />
@@ -493,7 +476,6 @@ export default function HistorialVentasPage() {
         </table>
       </div>
 
-      {/*paginación*/}
       <div
         style={{
           marginTop: 20,
@@ -534,7 +516,6 @@ export default function HistorialVentasPage() {
         </button>
       </div>
 
-      {/*modal de detalles*/}
       {modalOpen && selectedVenta && (
         <div
           style={{
@@ -597,30 +578,24 @@ export default function HistorialVentasPage() {
                   )
                 )}
               </div>
+              <div style={{ marginTop: 20 }}>
+                <h4
+                  style={{
+                    margin: "0 0 10px 0",
+                    color: "#64748b",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Exportar documento
+                </h4>
+                <ExportActions
+                  venta={{ ...selectedVenta, detalles: detallesVenta }}
+                />
+              </div>
             </div>
             <div
               style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
             >
-              {/*{selectedVenta.estado !== "anulada" && (
-                
-                <button
-                  onClick={abrirModalAgregar}
-                  style={{
-                    background: "var(--color-primary)",
-                    color: "white",
-                    border: "none",
-                    padding: "10px 15px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                  }}
-                >
-                  <PlusCircle size={16} /> Agregar Productos Extra
-                </button>
-                
-              )}*/}
               <button
                 onClick={() => setModalOpen(false)}
                 style={{
@@ -638,7 +613,6 @@ export default function HistorialVentasPage() {
         </div>
       )}
 
-      {/* MODAL AGREGAR EXTRA */}
       {addModalOpen && (
         <div
           style={{
@@ -803,7 +777,7 @@ export default function HistorialVentasPage() {
                   fontWeight: "bold",
                 }}
               >
-                <span>Total a Agregar:</span>
+                <span>Total a agregar:</span>
                 <span>
                   {formatoQuetzal.format(
                     itemsToAdd.reduce(
