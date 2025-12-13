@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
-import { formatoQuetzal } from "@/lib/utils";
+import { formatoQuetzal, formatUnit } from "@/lib/utils";
 
 Font.register({
   family: "Helvetica",
@@ -176,7 +176,14 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
             </View>
             {venta.detalles?.map((item: any, i: number) => (
               <View key={i} style={styles.tableRow}>
-                <Text style={styles.colQty}>{item.cantidad}</Text>
+                <Text style={styles.colQty}>
+                  {item.cantidad}{" "}
+                  {item.datos_extra?.unidad_medida
+                    ? formatUnit(item.datos_extra.unidad_medida)
+                    : item.datos_extra?.descripcion_unidad
+                    ? formatUnit(item.datos_extra.descripcion_unidad)
+                    : ""}
+                </Text>
                 <View style={styles.colProd}>
                   <Text>{item.producto_nombre}</Text>
                   {item.datos_extra?.codigo_bateria && (
@@ -296,7 +303,10 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
           {venta.detalles?.map((item: any, i: number) => (
             <View key={i} style={styles.letterTableRow}>
               <Text style={{ width: "10%", textAlign: "center" }}>
-                {item.cantidad}
+                {item.cantidad}{" "}
+                {item.datos_extra?.unidad_medida
+                  ? formatUnit(item.datos_extra.unidad_medida)
+                  : ""}
               </Text>
               <Text style={{ width: "60%" }}>
                 {item.producto_nombre}

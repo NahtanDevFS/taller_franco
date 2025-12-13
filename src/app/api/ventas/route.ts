@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     for (const item of items) {
       // Obtener datos frescos del producto
       const prodRes = await client.query(
-        "SELECT stock, tipo, nombre, es_liquido, capacidad FROM productos WHERE id = $1",
+        "SELECT stock, tipo, nombre, es_liquido, capacidad, unidad_medida FROM productos WHERE id = $1",
         [item.producto_id]
       );
 
@@ -174,6 +174,12 @@ export async function POST(request: Request) {
 
       if (createdParcialId) {
         datosExtraObj.created_parcial_id = createdParcialId;
+      }
+
+      if (productoDB.es_liquido) {
+        datosExtraObj.unidad_medida =
+          productoDB.unidad_medida || datosExtraObj.descripcion_unidad;
+        datosExtraObj.es_liquido = true;
       }
 
       const datosExtraJson = JSON.stringify(datosExtraObj);

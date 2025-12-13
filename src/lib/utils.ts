@@ -21,3 +21,19 @@ export const formatoQuetzal = new Intl.NumberFormat("es-GT", {
   currency: "GTQ",
   minimumFractionDigits: 2,
 });
+
+export const formatUnit = (unit: string | null | undefined): string => {
+  if (!unit) return "";
+  const lower = unit.toLowerCase().trim();
+
+  if (lower.startsWith("lit")) return "Lts";
+  if (lower.startsWith("gal")) return "Gal";
+  if (lower.startsWith("mil") || lower === "ml") return "ml";
+  if (lower.startsWith("onz")) return "Oz";
+  if (lower.startsWith("bot")) return "Bot";
+  if (lower.startsWith("caj")) return "Caja";
+  if (lower.startsWith("uni")) return "Unid";
+  if (lower.startsWith("met")) return "Mts";
+
+  return unit.substring(0, 3); //fallback de primeras 3 letras si no conocemos la unidad
+};

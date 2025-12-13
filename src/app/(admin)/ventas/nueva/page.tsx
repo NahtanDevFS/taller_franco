@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import styles from "./ventas.module.css";
-import { formatoQuetzal } from "@/lib/utils";
+import { formatoQuetzal, formatUnit } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
 import { Trash2, Plus, Minus, ShoppingCart, ScanBarcode } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -582,7 +582,18 @@ function POSContent() {
                       >
                         <Minus size={12} />
                       </button>
-                      <span>{item.cantidad}</span>
+                      <span
+                        style={{
+                          minWidth: 30,
+                          textAlign: "center",
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        {item.cantidad}{" "}
+                        {item.datos_extra?.es_liquido
+                          ? formatUnit(item.datos_extra.descripcion_unidad)
+                          : ""}
+                      </span>
                       <button
                         className={styles.qtyBtn}
                         onClick={() => updateQuantity(item.id, 1)}

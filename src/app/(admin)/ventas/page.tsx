@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { formatoQuetzal } from "@/lib/utils";
+import { formatoQuetzal, formatUnit } from "@/lib/utils";
 import { Toaster, toast } from "sonner";
 import Link from "next/link";
 import {
@@ -488,7 +488,14 @@ export default function HistorialVentasPage() {
                   }}
                 >
                   <span>
-                    {d.cantidad}x {d.producto_nombre}
+                    {d.cantidad}
+                    {d.datos_extra?.es_liquido
+                      ? ` ${formatUnit(
+                          d.datos_extra.unidad_medida ||
+                            d.datos_extra.descripcion_unidad
+                        )} `
+                      : "x "}
+                    {d.producto_nombre}
                   </span>
                   <span>{formatoQuetzal.format(d.subtotal)}</span>
                 </div>
@@ -545,7 +552,7 @@ export default function HistorialVentasPage() {
         </div>
       )}
 
-      {addModalOpen && (
+      {/*{addModalOpen && (
         <div
           style={{
             position: "fixed",
@@ -758,7 +765,7 @@ export default function HistorialVentasPage() {
             </div>
           </div>
         </div>
-      )}
+      )}*/}
     </div>
   );
 }
