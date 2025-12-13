@@ -75,7 +75,15 @@ export async function POST(request: Request) {
   const client = await pool.connect();
   try {
     const body = await request.json();
-    const { usuario_id, items, total, cliente, estado, idempotency_key } = body;
+    const {
+      usuario_id,
+      items,
+      total,
+      cliente,
+      estado,
+      idempotency_key,
+      descuento = 0,
+    } = body;
 
     //si el frontend no mandó llave (cache viejo), generamos una para que no falle el insert, aunque perdemos la protección de idempotencia en ese caso específico
     const transactionKey = idempotency_key || crypto.randomUUID();
@@ -85,8 +93,17 @@ export async function POST(request: Request) {
     const estadoFinal = estado || "completada";
 
     const ventaRes = await client.query(
-      "INSERT INTO ventas (usuario_id, total, estado, cliente, idempotency_key) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      [usuario_id, total, estadoFinal, cliente || "CF", transactionKey]
+      `INSERT INTO ventas (usuario_id, total, estado, cliente, idempotency_key, descuento) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING id`,
+      [
+        usuario_id,
+        total,
+        estadoFinal,
+        cliente || "CF",
+        transactionKey,
+        descuento,
+      ]
     );
     const ventaId = ventaRes.rows[0].id;
 

@@ -127,7 +127,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
   try {
     const body = await req.json();
-    const { items, total, cliente, estado, fecha_venta } = body;
+    const { items, total, descuento, cliente, estado, fecha_venta } = body;
 
     await client.query("BEGIN");
 
@@ -137,9 +137,9 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
     await client.query(
       `UPDATE ventas 
-       SET total = $1, cliente = $2, estado = $3, fecha_venta = COALESCE($4, fecha_venta)
-       WHERE id = $5`,
-      [total, cliente, estado, fecha_venta, id]
+       SET total = $1, descuento = $2, cliente = $3, estado = $4, fecha_venta = COALESCE($5, fecha_venta)
+       WHERE id = $6`,
+      [total, descuento, cliente, estado, fecha_venta, id]
     );
 
     for (const item of items) {

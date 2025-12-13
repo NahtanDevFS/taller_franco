@@ -42,12 +42,6 @@ function POSContent() {
 
   const [scannerOpen, setScannerOpen] = useState(false);
 
-  const [pendingBattery, setPendingBattery] = useState<any | null>(null);
-  const [warrantyData, setWarrantyData] = useState({
-    meses: 12,
-    codigo_unico: "",
-  });
-
   //estado para modal de concepto libre
   const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
   const [customItemData, setCustomItemData] = useState({
@@ -69,6 +63,8 @@ function POSContent() {
   const [userId, setUserId] = useState<string | null>(null);
 
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
+
+  const [discount, setDiscount] = useState<string>("");
 
   useEffect(() => {
     const getUser = async () => {
@@ -100,6 +96,7 @@ function POSContent() {
       //primero se carga el cliente y su estado
       setClientName(data.cliente || "");
       setIsPending(data.estado === "pendiente");
+      setDiscount(data.descuento || 0);
 
       //ahora los datos del detalle de la venta se transforman para mostrarse en el carrito
       const itemsFormateados = data.detalles.map((d: any) => ({
@@ -336,17 +333,24 @@ function POSContent() {
   };
 
   //lógica para el cobro
-  const total = cart.reduce((acc, item) => acc + item.subtotal, 0);
+  const subtotal = cart.reduce((acc, item) => acc + item.subtotal, 0);
+  const discountValue = parseFloat(discount) || 0;
+  const total = Math.max(0, subtotal - discountValue);
 
   const handlePay = async () => {
     if (cart.length === 0) return;
+    if (discountValue > subtotal) {
+      toast.error("El descuento no puede ser mayor al total de la venta");
+      return;
+    }
     setLoadingPay(true);
 
     try {
       const payload = {
         usuario_id: userId,
         cliente: clientName || "CF",
-        total: cart.reduce((acc, item) => acc + item.subtotal, 0),
+        total: total,
+        descuento: discountValue,
         estado: isPending ? "pendiente" : "completada",
         idempotency_key: idempotencyKey,
         items: cart.map((item) => ({
@@ -375,6 +379,7 @@ function POSContent() {
           setSearchResults([]);
           setClientName("");
           setIsPending(false);
+          setDiscount("");
           setIdempotencyKey(crypto.randomUUID()); // Regenerar para la próxima
           return;
         }
@@ -389,6 +394,7 @@ function POSContent() {
         setSearchResults([]);
         setClientName("");
         setIsPending(false);
+        setDiscount("");
         //regenerar llave para la siguiente venta
         setIdempotencyKey(crypto.randomUUID());
       }
@@ -620,6 +626,64 @@ function POSContent() {
           </div>
 
           <div className={styles.cartFooter}>
+            <div
+              style={{
+                marginBottom: 10,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: "0.9rem", color: "#666" }}>
+                Subtotal:
+              </span>
+              <span style={{ fontWeight: "bold" }}>
+                {formatoQuetzal.format(subtotal)}
+              </span>
+            </div>
+
+            <div
+              style={{
+                marginBottom: 15,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#ef4444",
+                  fontWeight: "bold",
+                }}
+              >
+                Descuento (Q):
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={discount}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (val > subtotal) {
+                    toast.error("Descuento excede el subtotal");
+                    return;
+                  }
+                  setDiscount(e.target.value);
+                }}
+                className={styles.searchInput}
+                style={{
+                  width: 100,
+                  textAlign: "right",
+                  padding: "5px",
+                  border: "1px solid #ef4444",
+                  color: "#ef4444",
+                  fontWeight: "bold",
+                }}
+              />
+            </div>
             <div className={styles.totalRow}>
               <span>Total</span>
               <span>{formatoQuetzal.format(total)}</span>

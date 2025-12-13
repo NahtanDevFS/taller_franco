@@ -129,6 +129,12 @@ interface InvoiceProps {
 
 export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
   const fecha = new Date(venta.fecha_venta).toLocaleString("es-GT");
+  const subtotalReal =
+    venta.detalles?.reduce(
+      (acc: number, item: any) => acc + Number(item.subtotal),
+      0
+    ) || 0;
+  const descuento = Number(venta.descuento) || 0;
 
   if (tipo === "ticket") {
     const minHeight = 300;
@@ -207,9 +213,28 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
                 Subtotal:
               </Text>
               <Text style={{ width: "40%", textAlign: "right" }}>
-                {formatoQuetzal.format(venta.total)}
+                {formatoQuetzal.format(subtotalReal)}
               </Text>
             </View>
+            {descuento > 0 && (
+              <View style={styles.totalRow}>
+                <Text
+                  style={{
+                    width: "60%",
+                    textAlign: "right",
+                    paddingRight: 10,
+                    color: "#ef4444",
+                  }}
+                >
+                  Descuento:
+                </Text>
+                <Text
+                  style={{ width: "40%", textAlign: "right", color: "#ef4444" }}
+                >
+                  - {formatoQuetzal.format(descuento)}
+                </Text>
+              </View>
+            )}
             <View style={[styles.totalRow, { marginTop: 2 }]}>
               <Text
                 style={{
@@ -334,8 +359,22 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
               }}
             >
               <Text>Subtotal:</Text>
-              <Text>{formatoQuetzal.format(venta.total)}</Text>
+              <Text>{formatoQuetzal.format(subtotalReal)}</Text>
             </View>
+            {descuento > 0 && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 5,
+                }}
+              >
+                <Text style={{ color: "#ef4444" }}>Descuento:</Text>
+                <Text style={{ color: "#ef4444" }}>
+                  - {formatoQuetzal.format(descuento)}
+                </Text>
+              </View>
+            )}
             <View
               style={{
                 flexDirection: "row",
