@@ -4,7 +4,15 @@ import { useSearchParams, useRouter } from "next/navigation";
 import styles from "./ventas.module.css";
 import { formatoQuetzal, formatUnit } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
-import { Trash2, Plus, Minus, ShoppingCart, ScanBarcode } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingCart,
+  ScanBarcode,
+  ArrowLeft,
+} from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import BarcodeScanner from "@/components/ventas/BarcodeScanner";
 
@@ -472,6 +480,12 @@ function POSContent() {
       )}
       <div className={styles.container}>
         <div className={styles.leftPanel}>
+          <Link href="/ventas" style={{ textDecoration: "none" }}>
+            <button className={styles.backButton}>
+              <ArrowLeft size={20} style={{ marginRight: 5 }} />
+              Regresar al Historial
+            </button>
+          </Link>
           <form onSubmit={handleSearch} className={styles.searchSection}>
             <p>Pulsa enter para buscar</p>
             <div className={styles.searchSectionItems}>

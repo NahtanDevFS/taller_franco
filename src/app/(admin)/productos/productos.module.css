@@ -1,3 +1,5 @@
+/* src/app/(admin)/productos/productos.module.css */
+
 .container {
   padding: 20px;
 }
@@ -12,6 +14,7 @@
 .title {
   color: var(--color-secondary);
   font-size: 1.5rem;
+  margin: 0;
 }
 
 .btnPrimary {
@@ -23,6 +26,8 @@
   cursor: pointer;
   font-weight: bold;
   transition: background 0.2s;
+  text-decoration: none; /* Importante para el Link */
+  display: inline-block;
 }
 
 .btnPrimary:hover {
@@ -46,13 +51,14 @@
   background-color: var(--color-secondary);
   color: white;
   padding: 12px;
-  font-size: 16px;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 .table td {
   padding: 12px;
   border-bottom: 1px solid #eee;
-  font-size: 16px;
+  font-size: 0.95rem;
 }
 
 .lowStock {
@@ -60,57 +66,16 @@
   font-weight: bold;
 }
 
-.modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
-
-.modalContent {
-  background: white;
-  padding: 25px;
-  border-radius: var(--border-radius);
-  width: 500px;
-  max-width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.formGroup {
-  margin-bottom: 15px;
-}
-
-.label {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-}
-
-.input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
+.badgeBateria {
+  margin-left: 5px;
+  font-size: 0.7rem;
+  background: #e0f2fe;
+  color: #0284c7;
+  padding: 2px 6px;
   border-radius: 4px;
 }
 
-.input:focus {
-  outline: 2px solid var(--color-primary);
-  border-color: transparent;
-}
-
-.row {
-  display: flex;
-  gap: 10px;
-}
-
+/* Filtros */
 .filterBar {
   display: flex;
   gap: 10px;
@@ -119,11 +84,11 @@
   padding: 15px;
   border-radius: var(--border-radius);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  flex-wrap: wrap; /* Para que se adapte a movil */
+  flex-wrap: wrap;
 }
 
 .searchContainer {
-  flex: 2; /* Ocupa más espacio */
+  flex: 2;
   position: relative;
   min-width: 200px;
 }
@@ -138,7 +103,7 @@
 
 .searchInput {
   width: 100%;
-  padding: 10px 10px 10px 35px; /* Espacio para el icono */
+  padding: 10px 10px 10px 35px;
   border: 1px solid #e2e8f0;
   border-radius: var(--border-radius);
   font-size: 0.95rem;
@@ -175,29 +140,55 @@
   color: #ef4444;
 }
 
+/* Acciones */
 .btnIcon {
   background: none;
   border: none;
   cursor: pointer;
-  font-weight: bold;
   color: var(--color-secondary);
   margin-right: 10px;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.btnIcon:hover {
+  background: #f1f5f9;
 }
 
 .btnDelete {
   color: #ef4444;
 }
 
-@media (max-width: 900px) {
-  .table th {
-    font-size: 14px;
+/* Paginación */
+.pageBtn {
+  padding: 8px 15px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+}
+
+.pageBtn:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+  color: #999;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 
-  .table td {
-    font-size: 14px;
+  .filterBar {
+    flex-direction: column;
   }
 
-  .title {
-    font-size: 18px;
+  .searchContainer,
+  .filterSelect {
+    width: 100%;
+    flex: none;
   }
 }

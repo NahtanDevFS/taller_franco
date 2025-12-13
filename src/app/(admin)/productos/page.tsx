@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import styles from "./productos.module.css";
-import { calcularPrecioVenta, formatoQuetzal } from "@/lib/utils";
+import { formatoQuetzal } from "@/lib/utils";
 import { Toaster, toast } from "sonner";
-import { Search, X } from "lucide-react";
+import { Search, X, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<any[]>([]);
@@ -16,29 +17,6 @@ export default function ProductosPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-
-  const initialFormState = {
-    nombre: "",
-    codigo_barras: "",
-    costo: 0,
-    precio: 0,
-    stock: 0,
-    stock_minimo: 5,
-    marca_id: "",
-    nueva_marca_nombre: "",
-    categoria_id: "",
-    es_bateria: false,
-    es_liquido: false,
-    capacidad: 1,
-    unidad_medida: "Litros",
-  };
-
-  const [formData, setFormData] = useState(initialFormState);
-  const [isManualMarca, setIsManualMarca] = useState(false);
-
-  //fetch de los productos con filtros
   const fetchProductos = useCallback(async () => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -54,7 +32,6 @@ export default function ProductosPage() {
     }
   }, [page, searchTerm, filterCategoria, filterMarca]);
 
-  //fetch de metadata con categorías y marcas
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -71,7 +48,6 @@ export default function ProductosPage() {
     fetchMetadata();
   }, []);
 
-  //debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProductos();
@@ -79,96 +55,20 @@ export default function ProductosPage() {
     return () => clearTimeout(timer);
   }, [fetchProductos]);
 
-  //manejo del costo para obtener precio de venta
-  const handleCostoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const costo = parseFloat(e.target.value) || 0;
-    const precioSugerido = calcularPrecioVenta(costo);
-    setFormData((prev) => ({ ...prev, costo, precio: precioSugerido }));
-  };
-
-  //cambio de categoria siendo automáticamente batería con ID 6
-  const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const catId = e.target.value;
-    const isBattery = catId === "6"; // ID 6 = Baterías
-    setFormData((prev) => ({
-      ...prev,
-      categoria_id: catId,
-      es_bateria: isBattery, // Auto-select
-    }));
-  };
-
-  const openNewModal = () => {
-    setEditingId(null);
-    setFormData(initialFormState);
-    setIsManualMarca(false);
-    setModalOpen(true);
-  };
-
-  const handleEdit = (producto: any) => {
-    setEditingId(producto.id);
-    setFormData({
-      nombre: producto.nombre,
-      codigo_barras: producto.codigo_barras || "",
-      costo: 0,
-      precio: parseFloat(producto.precio),
-      stock: producto.stock,
-      stock_minimo: producto.stock_minimo,
-      marca_id: producto.marca_id ? producto.marca_id.toString() : "",
-      nueva_marca_nombre: "",
-      categoria_id: producto.categoria_id
-        ? producto.categoria_id.toString()
-        : "",
-      es_bateria: producto.es_bateria || false,
-      es_liquido: producto.es_liquido || false,
-      capacidad: producto.capacidad || 1,
-      unidad_medida: producto.unidad_medida || "Litros",
-    });
-    setIsManualMarca(false);
-    setModalOpen(true);
-  };
-
   const handleDelete = async (id: number) => {
     if (!confirm("¿Eliminar este producto?")) return;
-    const promise = fetch(`/api/productos/${id}`, { method: "DELETE" })
-      .then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || "Error al eliminar");
-        }
-        return res.json();
-      })
-      .then(() => {
+
+    toast.promise(
+      fetch(`/api/productos/${id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok) throw new Error("Error al eliminar");
         fetchProductos();
-        return "Producto eliminado";
-      });
-    toast.promise(promise, {
-      loading: "Eliminando...",
-      success: (msg) => `${msg}`,
-      error: (err) => `${err.message}`,
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = editingId ? `/api/productos/${editingId}` : "/api/productos";
-    const method = editingId ? "PUT" : "POST";
-
-    const promise = fetch(url, {
-      method: method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    }).then(async (res) => {
-      if (!res.ok) throw new Error("Error");
-      setModalOpen(false);
-      fetchProductos();
-      return editingId ? "Producto actualizado" : "Producto creado";
-    });
-
-    toast.promise(promise, {
-      loading: "Guardando...",
-      success: (msg) => `${msg}`,
-      error: "Error al guardar",
-    });
+      }),
+      {
+        loading: "Eliminando...",
+        success: "Producto eliminado",
+        error: "Error al eliminar",
+      }
+    );
   };
 
   const clearFilters = () => {
@@ -184,9 +84,10 @@ export default function ProductosPage() {
 
       <div className={styles.header}>
         <h1 className={styles.title}>Inventario</h1>
-        <button className={styles.btnPrimary} onClick={openNewModal}>
-          + Nuevo Producto
-        </button>
+
+        <Link href="/productos/nuevo">
+          <button className={styles.btnPrimary}>+ Nuevo Producto</button>
+        </Link>
       </div>
 
       <div className={styles.filterBar}>
@@ -260,18 +161,7 @@ export default function ProductosPage() {
                   <td>
                     {p.nombre}
                     {p.es_bateria && (
-                      <span
-                        style={{
-                          marginLeft: 5,
-                          fontSize: "0.7rem",
-                          background: "#e0f2fe",
-                          color: "#0284c7",
-                          padding: "2px 5px",
-                          borderRadius: 4,
-                        }}
-                      >
-                        Batería
-                      </span>
+                      <span className={styles.badgeBateria}>Batería</span>
                     )}
                   </td>
                   <td>{p.categoria_nombre || "-"}</td>
@@ -283,24 +173,28 @@ export default function ProductosPage() {
                   </td>
                   <td>{formatoQuetzal.format(p.precio)}</td>
                   <td>
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className={styles.btnIcon}
-                    >
-                      Editar
-                    </button>
+                    <Link href={`/productos/nuevo?id=${p.id}`}>
+                      <button className={styles.btnIcon} title="Editar">
+                        <Edit size={18} />
+                      </button>
+                    </Link>
+
                     <button
                       onClick={() => handleDelete(p.id)}
                       className={`${styles.btnIcon} ${styles.btnDelete}`}
+                      title="Eliminar"
                     >
-                      Eliminar
+                      <Trash2 size={18} />
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: 20 }}>
+                <td
+                  colSpan={7}
+                  style={{ textAlign: "center", padding: 20, color: "#999" }}
+                >
                   No se encontraron productos.
                 </td>
               </tr>
@@ -311,288 +205,32 @@ export default function ProductosPage() {
 
       <div
         style={{
-          marginTop: 10,
+          marginTop: 20,
           display: "flex",
           justifyContent: "center",
           gap: 10,
         }}
       >
-        <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+        <button
+          disabled={page === 1}
+          onClick={() => setPage((p) => p - 1)}
+          className={styles.pageBtn}
+        >
           &lt; Anterior
         </button>
-        <span style={{ fontWeight: "bold", color: "#64748b" }}>
+        <span
+          style={{ fontWeight: "bold", color: "#64748b", alignSelf: "center" }}
+        >
           Página {page} de {totalPages}
         </span>
         <button
           disabled={page === totalPages}
           onClick={() => setPage((p) => p + 1)}
+          className={styles.pageBtn}
         >
           Siguiente &gt;
         </button>
       </div>
-
-      {modalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <h2 style={{ color: "var(--color-secondary)", marginTop: 0 }}>
-              {editingId ? "Editar Producto" : "Agregar Producto"}
-            </h2>
-            <form onSubmit={handleSubmit}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Nombre del Repuesto</label>
-                <input
-                  className={styles.input}
-                  required
-                  value={formData.nombre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className={styles.row}>
-                <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label className={styles.label}>Código de Barras</label>
-                  <input
-                    className={styles.input}
-                    value={formData.codigo_barras}
-                    placeholder="Escanear o escribir"
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        codigo_barras: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label className={styles.label}>Categoría</label>
-                  <select
-                    className={styles.input}
-                    required
-                    value={formData.categoria_id}
-                    onChange={handleCategoriaChange}
-                  >
-                    <option value="">Seleccionar...</option>
-                    {categorias.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                <div style={{ display: "flex", gap: 20 }}>
-                  <label
-                    className={styles.label}
-                    style={{ display: "flex", alignItems: "center", gap: 10 }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.es_bateria}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          es_bateria: e.target.checked,
-                        })
-                      }
-                    />
-                    Es batería
-                  </label>
-                  <label
-                    className={styles.label}
-                    style={{ display: "flex", alignItems: "center", gap: 10 }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.es_liquido}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          es_liquido: e.target.checked,
-                        })
-                      }
-                    />
-                    Es líquido / Granel
-                  </label>
-                </div>
-              </div>
-
-              {formData.es_liquido && (
-                <div className={styles.row}>
-                  <div className={styles.formGroup} style={{ flex: 1 }}>
-                    <label className={styles.label}>Capacidad del Envase</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className={styles.input}
-                      value={formData.capacidad}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          capacidad: parseFloat(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className={styles.formGroup} style={{ flex: 1 }}>
-                    <label className={styles.label}>Unidad de Medida</label>
-                    <select
-                      className={styles.input}
-                      value={formData.unidad_medida}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          unidad_medida: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="Litros">Litros</option>
-                      <option value="Mililitros">Mililitros</option>
-                      <option value="Galones">Galones</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Marca{" "}
-                  <small
-                    style={{
-                      color: "var(--color-primary)",
-                      cursor: "pointer",
-                      marginLeft: 5,
-                    }}
-                    onClick={() => setIsManualMarca(!isManualMarca)}
-                  >
-                    ({isManualMarca ? "Seleccionar existente" : "Crear nueva"})
-                  </small>
-                </label>
-                {isManualMarca ? (
-                  <input
-                    className={styles.input}
-                    placeholder="Nueva marca..."
-                    value={formData.nueva_marca_nombre}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        nueva_marca_nombre: e.target.value,
-                        marca_id: "",
-                      })
-                    }
-                  />
-                ) : (
-                  <select
-                    className={styles.input}
-                    value={formData.marca_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, marca_id: e.target.value })
-                    }
-                  >
-                    <option value="">Seleccionar...</option>
-                    {marcas.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div className={styles.row}>
-                <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label className={styles.label}>Costo (Q) sin envío</label>
-                  <input
-                    type="number"
-                    className={styles.input}
-                    min="0"
-                    step="0.01"
-                    value={formData.costo || ""}
-                    placeholder={editingId ? "Opcional" : "0.00"}
-                    onChange={handleCostoChange}
-                  />
-                </div>
-                <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label className={styles.label}>Precio Venta (Q)</label>
-                  <input
-                    type="number"
-                    className={styles.input}
-                    required
-                    value={formData.precio}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        precio: parseFloat(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className={styles.row}>
-                <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label className={styles.label}>Stock Actual</label>
-                  <input
-                    type="number"
-                    className={styles.input}
-                    required
-                    value={formData.stock}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        stock: parseInt(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label className={styles.label}>Stock Mínimo</label>
-                  <input
-                    type="number"
-                    className={styles.input}
-                    value={formData.stock_minimo}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        stock_minimo: parseInt(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: 10,
-                  marginTop: 20,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid #ccc",
-                    padding: "10px 20px",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className={styles.btnPrimary}>
-                  {editingId ? "Actualizar" : "Guardar Producto"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -319,6 +319,25 @@
   background-color: #eab308 !important;
 }
 
+.backButton {
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: #64748b;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  width: fit-content;
+}
+
+.backButton:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
 @media (max-width: 900px) {
   .container {
     grid-template-columns: 1fr;
