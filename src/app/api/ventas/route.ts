@@ -75,15 +75,18 @@ export async function POST(request: Request) {
   const client = await pool.connect();
   try {
     const body = await request.json();
-    const { usuario_id, items, total, cliente, estado } = body;
+    const { usuario_id, items, total, cliente, estado, idempotency_key } = body;
+
+    //si el frontend no mandó llave (cache viejo), generamos una para que no falle el insert, aunque perdemos la protección de idempotencia en ese caso específico
+    const transactionKey = idempotency_key || crypto.randomUUID();
 
     await client.query("BEGIN");
 
     const estadoFinal = estado || "completada";
 
     const ventaRes = await client.query(
-      "INSERT INTO ventas (usuario_id, total, estado, cliente) VALUES ($1, $2, $3, $4) RETURNING id",
-      [usuario_id, total, estadoFinal, cliente || "CF"]
+      "INSERT INTO ventas (usuario_id, total, estado, cliente, idempotency_key) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+      [usuario_id, total, estadoFinal, cliente || "CF", transactionKey]
     );
     const ventaId = ventaRes.rows[0].id;
 
@@ -195,6 +198,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Venta registrada", id: ventaId });
   } catch (error: any) {
     await client.query("ROLLBACK");
+
+    //manejo específico de error de duplicado (postgres error 23505)
+    if (
+      error.code === "23505" &&
+      error.constraint?.includes("idempotency_key")
+    ) {
+      return NextResponse.json(
+        {
+          error: "DUPLICATE_TRANSACTION",
+          message: "Esta venta ya fue procesada previamente",
+        },
+        { status: 409 } //409 Conflict
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   } finally {
     client.release();

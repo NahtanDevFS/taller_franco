@@ -68,6 +68,8 @@ function POSContent() {
   //obtener usuario actual para saber quien hizo la venta
   const [userId, setUserId] = useState<string | null>(null);
 
+  const [idempotencyKey, setIdempotencyKey] = useState<string>("");
+
   useEffect(() => {
     const getUser = async () => {
       const supabase = createClient();
@@ -75,6 +77,8 @@ function POSContent() {
       if (data.user) setUserId(data.user.id);
     };
     getUser();
+    //se genera el id solo en el cliente para evitar errores de hidratación
+    setIdempotencyKey(crypto.randomUUID());
     searchInputRef.current?.focus(); //auto foco al entrar
   }, []);
 
@@ -106,7 +110,7 @@ function POSContent() {
           : d.producto_nombre,
         codigo_barras: d.codigo_barras,
         precio: parseFloat(d.precio_unitario),
-        cantidad: d.cantidad,
+        cantidad: parseFloat(d.cantidad),
         subtotal: parseFloat(d.subtotal),
         es_bateria: d.producto_es_bateria,
         //en edición simplificamos el stock max visual para no bloquear al usuario ya que la validación real se hará en el backend al guardar
@@ -265,7 +269,11 @@ function POSContent() {
     setCart((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          const newQty = item.cantidad + delta;
+          const currentQty =
+            typeof item.cantidad === "string"
+              ? parseFloat(item.cantidad)
+              : item.cantidad;
+          const newQty = currentQty + delta;
           if (newQty < 1) return item;
           if (!editId && newQty > item.stock_max) {
             toast.warning("Stock insuficiente");
@@ -340,6 +348,7 @@ function POSContent() {
         cliente: clientName || "CF",
         total: cart.reduce((acc, item) => acc + item.subtotal, 0),
         estado: isPending ? "pendiente" : "completada",
+        idempotency_key: idempotencyKey,
         items: cart.map((item) => ({
           producto_id: item.id,
           cantidad: item.cantidad,
@@ -358,7 +367,19 @@ function POSContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error");
+      if (!res.ok) {
+        if (res.status === 409 || data.error === "DUPLICATE_TRANSACTION") {
+          toast.warning("Esta venta ya fue procesada anteriormente.");
+          //limpiamos todo porque la venta sí se hizo, solo que el frontend no se enteró a la primera
+          setCart([]);
+          setSearchResults([]);
+          setClientName("");
+          setIsPending(false);
+          setIdempotencyKey(crypto.randomUUID()); // Regenerar para la próxima
+          return;
+        }
+        throw new Error(data.error || "Error");
+      }
 
       toast.success(editId ? "Venta actualizada" : "Venta registrada");
 
@@ -368,6 +389,8 @@ function POSContent() {
         setSearchResults([]);
         setClientName("");
         setIsPending(false);
+        //regenerar llave para la siguiente venta
+        setIdempotencyKey(crypto.randomUUID());
       }
     } catch (error: any) {
       toast.error(error.message);
