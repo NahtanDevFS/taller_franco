@@ -83,21 +83,12 @@ export default function SerialesPage() {
         />
       )}
 
-      <div className={styles.actions} style={{ marginBottom: "1rem" }}>
-        <div style={{ position: "relative" }}>
-          <Search
-            size={18}
-            style={{
-              position: "absolute",
-              left: 10,
-              top: 10,
-              color: "#94a3b8",
-            }}
-          />
+      <div className={styles.actions}>
+        <div className={styles.searchWrapper}>
+          <Search size={18} className={styles.searchIcon} />
           <input
             type="text"
             className={styles.searchBar}
-            style={{ paddingLeft: "2.5rem" }}
             placeholder="Buscar serial, producto o cliente..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -144,8 +135,10 @@ export default function SerialesPage() {
                     {item.serial}
                   </td>
                   <td>
-                    {item.producto_nombre}
-                    <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                    <div style={{ fontWeight: 500 }}>
+                      {item.producto_nombre}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
                       {item.codigo_barras}
                     </div>
                   </td>
@@ -160,10 +153,9 @@ export default function SerialesPage() {
                       {item.estado}
                     </span>
                   </td>
-                  <td style={{ fontSize: "0.9rem" }}>
+                  <td style={{ whiteSpace: "nowrap" }}>
                     {new Date(item.fecha_ingreso).toLocaleDateString()}
                   </td>
-
                   <td>
                     {item.estado === "vendido" && item.cliente_nombre ? (
                       <div
@@ -200,7 +192,6 @@ export default function SerialesPage() {
                       <span style={{ color: "#cbd5e1" }}>---</span>
                     )}
                   </td>
-
                   <td>
                     {item.estado === "disponible" && (
                       <button

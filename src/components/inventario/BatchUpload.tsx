@@ -124,7 +124,7 @@ export default function BatchUpload({ onSuccess }: BatchUploadProps) {
             ))}
           </select>
 
-          <div style={{ marginTop: "1rem" }}>
+          <div className={styles.cameraWrapper}>
             <button
               className={styles.btnCamera}
               onClick={() => setShowCamera(true)}
@@ -138,7 +138,7 @@ export default function BatchUpload({ onSuccess }: BatchUploadProps) {
         </div>
 
         <div className={styles.formGroup}>
-          <label>2. Escaneo Manual (USB / Teclado)</label>
+          <label>2. Escaneo Manual (teclado)</label>
 
           <div className={styles.inputGroup}>
             <input
@@ -156,19 +156,16 @@ export default function BatchUpload({ onSuccess }: BatchUploadProps) {
               className={styles.btnAddManual}
               onClick={() => addSerial(manualCode)}
               disabled={!selectedProductId || !manualCode.trim()}
-              title="Agregar a la lista"
             >
               <Plus size={20} />
             </button>
           </div>
 
           <small className={styles.helperText}>
-            <Keyboard
-              size={12}
-              style={{ verticalAlign: "middle", marginRight: 4 }}
-            />
-            Presiona <strong>Enter</strong> o el botón <strong>+</strong> para
-            agregar.
+            <Keyboard size={14} />
+            <span>
+              Presiona <strong>Enter</strong> o <strong>+</strong> para agregar.
+            </span>
           </small>
         </div>
       </div>
@@ -176,25 +173,19 @@ export default function BatchUpload({ onSuccess }: BatchUploadProps) {
       {serialList.length > 0 && (
         <div className={styles.listContainer}>
           <div className={styles.listHeader}>
-            <span>Seriales listos para guardar ({serialList.length})</span>
+            <span>Seriales listos ({serialList.length})</span>
             <button
+              className={styles.btnClear}
               onClick={() => setSerialList([])}
-              style={{
-                fontSize: "0.8rem",
-                color: "#64748b",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-              }}
             >
               Limpiar todo
             </button>
           </div>
 
-          <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+          <div className={styles.scrollArea}>
             {serialList.map((serial, index) => (
               <div key={`${serial}-${index}`} className={styles.listItem}>
-                <span style={{ fontFamily: "monospace", fontWeight: 500 }}>
+                <span className={styles.serialText}>
                   #{serialList.length - index} - {serial}
                 </span>
                 <button
@@ -217,14 +208,7 @@ export default function BatchUpload({ onSuccess }: BatchUploadProps) {
             {loading ? (
               "Procesando..."
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
+              <div className={styles.saveContent}>
                 <Save size={18} /> Confirmar Ingreso de Lote
               </div>
             )}
