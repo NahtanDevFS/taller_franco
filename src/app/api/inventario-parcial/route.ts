@@ -10,7 +10,7 @@ export async function GET() {
         ip.codigo_referencia, 
         ip.created_at,
         p.nombre as producto_nombre,
-        p.unidad_medida,
+        COALESCE(p.atributos->>'unidad_medida', 'Litros') as unidad_medida,
         p.codigo_barras as codigo_original
       FROM inventario_parcial ip
       JOIN productos p ON ip.producto_id = p.id

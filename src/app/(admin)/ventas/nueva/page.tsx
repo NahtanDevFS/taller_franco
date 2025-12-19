@@ -117,37 +117,44 @@ function POSContent() {
       setDiscount(data.descuento || 0);
 
       const itemsFormateados = data.detalles.map((d: any) => {
-        const capacidad = parseFloat(d.producto?.capacidad || d.capacidad || 1);
+        const prod = d.producto || {};
+        const attrs = prod.atributos || {};
+        const requiereSerial = prod.requiere_serial || false;
+        const permiteFraccion = prod.permite_fraccion || false;
+        const capacidad = parseFloat(attrs.capacidad || prod.capacidad || 1);
 
-        const stockEnDb = parseFloat(d.producto?.stock || 0);
+        const stockEnDb = parseFloat(prod.stock || 0);
 
         let stockMaxDisponible;
 
-        const esLiquido = d.datos_extra?.es_liquido;
+        //const fueVendidoComoLiquido = d.datos_extra?.es_liquido;
 
-        if (esLiquido) {
+        if (permiteFraccion) {
           const stockBodegaLitros =
-            d.producto?.origen === "parcial"
-              ? stockEnDb
-              : stockEnDb * capacidad;
+            prod.origen === "parcial" ? stockEnDb : stockEnDb * capacidad;
 
           stockMaxDisponible = stockBodegaLitros + parseFloat(d.cantidad);
         } else {
           stockMaxDisponible = stockEnDb + parseFloat(d.cantidad);
         }
 
+        //const esBateria = d.producto?.tiene_garantia || d.producto_es_bateria;
+
         return {
           id: d.producto_id,
           nombre: d.datos_extra?.descripcion_personalizada
             ? d.datos_extra.descripcion_personalizada.toUpperCase()
-            : d.producto_nombre,
+            : prod.nombre || d.producto_nombre,
+
           codigo_barras: d.codigo_barras,
           precio: parseFloat(d.precio_unitario),
           cantidad: parseFloat(d.cantidad),
           subtotal: parseFloat(d.subtotal),
-          es_bateria: d.producto_es_bateria,
-          requiere_serial:
-            !!d.datos_extra?.numero_serie || !!d.datos_extra?.codigo_bateria,
+
+          es_bateria: false,
+
+          requiere_serial: requiereSerial || !!d.datos_extra?.numero_serie,
+
           stock_max: stockMaxDisponible,
           datos_extra: d.datos_extra,
         };
@@ -212,25 +219,32 @@ function POSContent() {
   };
 
   const addItemToCart = (productoRaw: any) => {
+    const attrs = productoRaw.atributos || {};
     const producto = {
       ...productoRaw,
       stock: parseFloat(productoRaw.stock) || 0,
       precio: parseFloat(productoRaw.precio) || 0,
-      capacidad: parseFloat(productoRaw.capacidad) || 1,
-      es_liquido: productoRaw.permite_fraccion || productoRaw.es_liquido,
+      capacidad: parseFloat(attrs.capacidad) || 1,
+      unidad_medida: attrs.unidad_medida || "Unidades",
+      es_liquido: productoRaw.permite_fraccion,
+      tiene_garantia: productoRaw.tiene_garantia,
       requiere_serial: productoRaw.requiere_serial,
+      es_bateria: false,
     };
 
-    if (!editId && producto.tipo === "producto" && producto.stock <= 0) {
+    if (
+      !editId &&
+      producto.tipo === "producto" &&
+      !producto.requiere_serial &&
+      producto.stock <= 0
+    ) {
       toast.error(`¡Sin stock! ${producto.nombre} está agotado.`);
       return;
     }
 
     if (producto.requiere_serial) {
       setPendingSerialProduct(producto);
-
       setSerialInput(producto.numero_serie_detectado || "");
-
       setSerialModalOpen(true);
       return;
     }
@@ -242,12 +256,18 @@ function POSContent() {
       return;
     }
 
-    const extraData = producto.es_bateria
-      ? { es_bateria: true, garantia_meses: 12 }
-      : null;
+    let extraData = null;
+    if (producto.tiene_garantia) {
+      extraData = {
+        tiene_garantia: true,
+        garantia_meses: attrs.garantia_meses
+          ? parseInt(attrs.garantia_meses)
+          : 12,
+      };
+    }
+
     addToCartFinal(producto, extraData);
   };
-
   const addToCartFinal = (
     producto: any,
     extraData: any = null,

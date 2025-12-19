@@ -19,11 +19,11 @@ export interface Producto {
   requiere_serial: boolean;
   tiene_garantia: boolean;
   atributos: Record<string, any>;
-  es_bateria?: boolean;
-  es_liquido?: boolean;
+  //es_bateria?: boolean;
+  //es_liquido?: boolean;
   tipo?: string;
-  capacidad?: number;
-  unidad_medida?: string;
+  //capacidad?: number;
+  //unidad_medida?: string;
   created_at: string;
 }
 

@@ -115,11 +115,14 @@ function ProductFormContent() {
 
   const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const catId = e.target.value;
-    const isBattery = catId === "6";
+    const isBatteryCategory = catId === "6";
+
     setFormData((prev) => ({
       ...prev,
       categoria_id: catId,
-      es_bateria: isBattery,
+      tiene_garantia: isBatteryCategory ? true : prev.tiene_garantia,
+      requiere_serial: isBatteryCategory ? true : prev.requiere_serial,
+      stock: isBatteryCategory ? 0 : prev.stock,
     }));
   };
 

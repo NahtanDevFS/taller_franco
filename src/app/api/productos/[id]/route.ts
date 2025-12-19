@@ -8,7 +8,21 @@ export async function GET(request: Request, { params }: { params: Params }) {
   try {
     const { id } = await params;
 
-    const res = await pool.query("SELECT * FROM productos WHERE id = $1", [id]);
+    const sql = `
+      SELECT 
+        id, codigo_barras, nombre, descripcion, precio, stock, stock_minimo,
+        categoria_id, marca_id, url_imagen, tipo, created_at, updated_at,
+        permite_fraccion, requiere_serial, tiene_garantia, atributos,
+        
+        permite_fraccion as es_liquido,
+        tiene_garantia as es_bateria,
+        COALESCE((atributos->>'capacidad')::numeric, 1) as capacidad,
+        COALESCE(atributos->>'unidad_medida', 'Unidades') as unidad_medida
+      FROM productos 
+      WHERE id = $1
+    `;
+
+    const res = await pool.query(sql, [id]);
 
     if (res.rows.length === 0) {
       return NextResponse.json(
@@ -43,33 +57,20 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       requiere_serial,
       tiene_garantia,
       atributos,
-      //legacy
-      es_bateria,
-      es_liquido,
-      capacidad,
-      unidad_medida,
     } = body;
 
-    const finalFraccion = permite_fraccion ?? es_liquido ?? false;
-    const finalGarantia = tiene_garantia ?? es_bateria ?? false;
-    const finalSerial = requiere_serial ?? false;
-
-    let finalAtributos = atributos || {};
-    if (!atributos) {
-      if (capacidad !== undefined)
-        finalAtributos.capacidad = parseFloat(capacidad);
-      if (unidad_medida) finalAtributos.unidad_medida = unidad_medida;
-    }
+    const finalAtributos = atributos || {};
 
     const finalCodigo =
       codigo_barras && codigo_barras.trim() !== "" ? codigo_barras : null;
+
     const finalCategoriaId =
       categoria_id && categoria_id !== "" ? parseInt(categoria_id) : null;
+
     let finalMarcaId = marca_id && marca_id !== "" ? parseInt(marca_id) : null;
 
     await client.query("BEGIN");
 
-    //si se quiere crear una marca durante la edición
     if (nueva_marca_nombre && nueva_marca_nombre.trim() !== "") {
       const checkMarca = await client.query(
         "SELECT id FROM marcas WHERE nombre = $1",
@@ -104,9 +105,9 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       stock_minimo,
       finalMarcaId,
       finalCategoriaId,
-      finalFraccion,
-      finalSerial,
-      finalGarantia,
+      permite_fraccion ?? false,
+      requiere_serial ?? false,
+      tiene_garantia ?? false,
       JSON.stringify(finalAtributos),
       id,
     ]);

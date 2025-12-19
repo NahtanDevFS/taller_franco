@@ -6,7 +6,7 @@ type Params = Promise<{ id: string }>;
 async function restaurarStock(client: any, ventaId: string) {
   const oldDetailsRes = await client.query(
     `SELECT d.id, d.producto_id, d.cantidad, d.datos_extra, 
-            p.tipo, p.es_liquido, p.capacidad, p.requiere_serial
+            p.tipo, p.permite_fraccion, p.atributos, p.requiere_serial
      FROM detalle_ventas d
      JOIN productos p ON d.producto_id = p.id
      WHERE d.venta_id = $1`,
@@ -15,6 +15,9 @@ async function restaurarStock(client: any, ventaId: string) {
 
   for (const item of oldDetailsRes.rows) {
     const datosExtra = item.datos_extra || {};
+
+    const capacidad = parseFloat(item.atributos?.capacidad || 1);
+    const esLiquido = item.permite_fraccion;
 
     if (item.requiere_serial) {
       const serial = datosExtra.numero_serie || datosExtra.codigo_bateria;
@@ -36,8 +39,8 @@ async function restaurarStock(client: any, ventaId: string) {
       } else {
         let cantidadARestar = 0;
 
-        if (item.es_liquido && item.capacidad > 0) {
-          cantidadARestar = Math.ceil(item.cantidad / item.capacidad);
+        if (esLiquido && capacidad > 0) {
+          cantidadARestar = Math.ceil(item.cantidad / capacidad);
         } else {
           cantidadARestar = Math.ceil(item.cantidad);
         }
@@ -80,12 +83,11 @@ export async function GET(req: Request, { params }: { params: Params }) {
           p.nombre as producto_nombre, 
           p.codigo_barras,
           p.stock,             
-          p.capacidad,        
-          p.es_liquido,
+          p.atributos,        
+          p.permite_fraccion as es_liquido, 
           p.tipo,
-          p.unidad_medida,
           p.requiere_serial,
-          p.es_bateria
+          p.tiene_garantia as es_bateria
        FROM detalle_ventas d 
        JOIN productos p ON d.producto_id = p.id 
        WHERE d.venta_id = $1`,
@@ -160,12 +162,18 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
     for (const item of items) {
       const prodRes = await client.query(
-        "SELECT stock, tipo, nombre, es_liquido, capacidad, requiere_serial, unidad_medida FROM productos WHERE id = $1",
+        "SELECT stock, tipo, nombre, permite_fraccion, atributos, requiere_serial FROM productos WHERE id = $1",
         [item.producto_id]
       );
       if (prodRes.rows.length === 0)
         throw new Error(`Producto ${item.producto_id} no existe`);
+
       const prodDB = prodRes.rows[0];
+      const prodAttrs = prodDB.atributos || {};
+
+      const capacidad = parseFloat(prodAttrs.capacidad || 1);
+      const unidadMedida = prodAttrs.unidad_medida || "Unidades";
+      const esLiquido = prodDB.permite_fraccion;
 
       let createdParcialId = null;
       let datosExtraObj = item.datos_extra || {};
@@ -210,12 +218,12 @@ export async function PUT(req: Request, { params }: { params: Params }) {
           if (prodDB.stock < 1)
             throw new Error(`Sin stock de ${prodDB.nombre}`);
 
-          if (prodDB.es_liquido && item.cantidad < prodDB.capacidad) {
+          if (esLiquido && item.cantidad < capacidad) {
             await client.query(
               "UPDATE productos SET stock = stock - 1 WHERE id = $1",
               [item.producto_id]
             );
-            const remanente = prodDB.capacidad - item.cantidad;
+            const remanente = capacidad - item.cantidad;
             const codigoRef = `OPEN-${Date.now()}-${Math.floor(
               Math.random() * 1000
             )}`;
@@ -229,10 +237,10 @@ export async function PUT(req: Request, { params }: { params: Params }) {
             let stockARestar = item.cantidad;
             let remanente = 0;
 
-            if (prodDB.es_liquido && prodDB.capacidad > 0) {
-              const botellas = Math.ceil(item.cantidad / prodDB.capacidad);
+            if (esLiquido && capacidad > 0) {
+              const botellas = Math.ceil(item.cantidad / capacidad);
               stockARestar = botellas;
-              remanente = botellas * prodDB.capacidad - item.cantidad;
+              remanente = botellas * capacidad - item.cantidad;
             }
 
             await client.query(
@@ -255,9 +263,9 @@ export async function PUT(req: Request, { params }: { params: Params }) {
         }
       }
 
-      if (prodDB.es_liquido) {
+      if (esLiquido) {
         datosExtraObj.unidad_medida =
-          prodDB.unidad_medida || datosExtraObj.descripcion_unidad;
+          unidadMedida || datosExtraObj.descripcion_unidad;
         datosExtraObj.es_liquido = true;
       }
 

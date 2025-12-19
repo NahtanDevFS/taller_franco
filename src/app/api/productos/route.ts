@@ -64,8 +64,17 @@ export async function GET(request: Request) {
     const commonColumns = `
       p.id, 
       p.stock_minimo, p.marca_id, p.categoria_id, p.tipo,
-      p.permite_fraccion, p.requiere_serial, p.tiene_garantia, p.atributos,
-      p.es_liquido, p.capacidad, p.unidad_medida, p.es_bateria, 
+      p.permite_fraccion, 
+      p.requiere_serial, 
+      p.tiene_garantia, 
+      p.atributos,
+      
+      p.permite_fraccion as es_liquido,
+      p.requiere_serial as es_bateria,
+      
+      COALESCE((p.atributos->>'capacidad')::numeric, 1) as capacidad,
+      COALESCE(p.atributos->>'unidad_medida', 'Unidades') as unidad_medida,
+
       m.nombre as marca_nombre, c.nombre as categoria_nombre
     `;
 
@@ -156,7 +165,7 @@ export async function GET(request: Request) {
       ...p,
       stock: parseFloat(p.stock) || 0,
       precio: parseFloat(p.precio) || 0,
-      es_liquido: p.permite_fraccion || p.es_liquido,
+      capacidad: parseFloat(p.capacidad),
     }));
 
     return NextResponse.json({

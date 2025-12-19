@@ -160,8 +160,8 @@ export default function ProductosPage() {
                   <td>{p.codigo_barras || "-"}</td>
                   <td>
                     {p.nombre}
-                    {p.es_bateria && (
-                      <span className={styles.badgeBateria}>Batería</span>
+                    {p.requiere_serial && (
+                      <span className={styles.badgeBateria}>Serial</span>
                     )}
                   </td>
                   <td>{p.categoria_nombre || "-"}</td>
