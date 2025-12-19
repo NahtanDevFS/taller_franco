@@ -15,11 +15,15 @@ export interface Producto {
   categoria_id: number | null;
   marca_id: number | null;
   url_imagen: string | null;
-  es_bateria: boolean;
-  tipo: "producto" | "servicio" | "tercero";
-  es_liquido: boolean;
-  capacidad: number;
-  unidad_medida: string;
+  permite_fraccion: boolean;
+  requiere_serial: boolean;
+  tiene_garantia: boolean;
+  atributos: Record<string, any>;
+  es_bateria?: boolean;
+  es_liquido?: boolean;
+  tipo?: string;
+  capacidad?: number;
+  unidad_medida?: string;
   created_at: string;
 }
 
@@ -50,10 +54,9 @@ export interface DetalleVenta {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
-  datos_extra: DatosExtraBateria | null; //la interfaz de los datos extra para las baterías
+  datos_extra: any;
 }
 
-// Tipo auxiliar para uso de JOINs
 export interface VentaCompleta extends Venta {
   detalle_ventas: DetalleVenta[];
   usuario?: { nombre: string };

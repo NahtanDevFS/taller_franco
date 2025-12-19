@@ -22,18 +22,52 @@ export async function GET() {
 
     //consulta con el total de inventario valorado (precio venta * stock)
     const inventarioQuery = `
-      SELECT COALESCE(SUM(stock * precio), 0) as total 
-      FROM productos
+      SELECT COALESCE(SUM(
+        precio * (
+          CASE 
+            WHEN requiere_serial = true THEN (
+              SELECT COUNT(*) FROM existencias_serializadas es 
+              WHERE es.producto_id = p.id AND es.estado = 'disponible'
+            )
+            ELSE stock 
+          END
+        )
+      ), 0) as total 
+      FROM productos p
+      WHERE p.tipo = 'producto'
     `;
 
     //productos con bajo Stock (limitado a 20)
     const bajoStockQuery = `
-      SELECT p.id, p.nombre, p.stock, p.stock_minimo, m.nombre as marca, c.nombre as categoria
-      FROM productos p
-      LEFT JOIN marcas m ON p.marca_id = m.id
-      LEFT JOIN categorias c ON p.categoria_id = c.id
-      WHERE p.stock <= p.stock_minimo
-      ORDER BY p.stock ASC
+      WITH stock_real_calc AS (
+        SELECT 
+          p.id, 
+          p.nombre, 
+          p.stock_minimo, 
+          p.marca_id, 
+          p.categoria_id,
+          CASE 
+            WHEN p.requiere_serial = true THEN (
+              SELECT COUNT(*)::int FROM existencias_serializadas es 
+              WHERE es.producto_id = p.id AND es.estado = 'disponible'
+            )
+            ELSE p.stock 
+          END as stock_actual
+        FROM productos p
+        WHERE p.tipo = 'producto'
+      )
+      SELECT 
+        src.id, 
+        src.nombre, 
+        src.stock_actual as stock, 
+        src.stock_minimo, 
+        m.nombre as marca, 
+        c.nombre as categoria
+      FROM stock_real_calc src
+      LEFT JOIN marcas m ON src.marca_id = m.id
+      LEFT JOIN categorias c ON src.categoria_id = c.id
+      WHERE src.stock_actual <= src.stock_minimo
+      ORDER BY src.stock_actual ASC
       LIMIT 20
     `;
 

@@ -8,12 +8,12 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  BatteryCharging,
   LogOut,
   X,
   PackageOpen,
   ChevronLeft,
   ChevronRight,
+  Barcode,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -50,9 +50,9 @@ export default function Sidebar({
       icon: <ShoppingCart size={20} />,
     },
     {
-      name: "Baterías",
-      path: "/ventas/baterias",
-      icon: <BatteryCharging size={20} />,
+      name: "Productos seriales",
+      path: "/productos_seriales",
+      icon: <Barcode size={20} />,
     },
     {
       name: "Productos abiertos",

@@ -3,7 +3,14 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, ScanBarcode } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  ScanBarcode,
+  Layers,
+  ShieldCheck,
+  Box,
+} from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { calcularPrecioVenta } from "@/lib/utils";
 import BarcodeScanner from "@/components/ventas/BarcodeScanner";
@@ -31,10 +38,12 @@ function ProductFormContent() {
     marca_id: "",
     nueva_marca_nombre: "",
     categoria_id: "",
-    es_bateria: false,
-    es_liquido: false,
+    permite_fraccion: false,
+    tiene_garantia: false,
+    requiere_serial: false,
     capacidad: 1,
     unidad_medida: "Litros",
+    garantia_meses: 12,
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -65,20 +74,27 @@ function ProductFormContent() {
           if (!res.ok) throw new Error("Producto no encontrado");
           const data = await res.json();
 
+          const attrs = data.atributos || {};
+
           setFormData({
             nombre: data.nombre,
             codigo_barras: data.codigo_barras || "",
-            costo: 0,
+            costo: parseFloat(data.costo || 0),
             precio: parseFloat(data.precio),
             stock: data.stock,
             stock_minimo: data.stock_minimo,
             marca_id: data.marca_id ? data.marca_id.toString() : "",
             nueva_marca_nombre: "",
             categoria_id: data.categoria_id ? data.categoria_id.toString() : "",
-            es_bateria: data.es_bateria || false,
-            es_liquido: data.es_liquido || false,
-            capacidad: data.capacidad || 1,
-            unidad_medida: data.unidad_medida || "Litros",
+
+            permite_fraccion: data.permite_fraccion ?? data.es_liquido ?? false,
+            tiene_garantia: data.tiene_garantia ?? data.es_bateria ?? false,
+            requiere_serial: data.requiere_serial ?? false,
+
+            capacidad: attrs.capacidad ?? data.capacidad ?? 1,
+            unidad_medida:
+              attrs.unidad_medida ?? data.unidad_medida ?? "Litros",
+            garantia_meses: attrs.garantia_meses ?? 12,
           });
         } catch (error) {
           toast.error("Error al cargar producto");
@@ -120,11 +136,27 @@ function ProductFormContent() {
     const url = editId ? `/api/productos/${editId}` : "/api/productos";
     const method = editId ? "PUT" : "POST";
 
+    const atributosExtras: any = {};
+
+    if (formData.permite_fraccion) {
+      atributosExtras.capacidad = formData.capacidad;
+      atributosExtras.unidad_medida = formData.unidad_medida;
+    }
+
+    if (formData.tiene_garantia) {
+      atributosExtras.garantia_meses = formData.garantia_meses;
+    }
+
+    const payload = {
+      ...formData,
+      atributos: atributosExtras,
+    };
+
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -311,19 +343,40 @@ function ProductFormContent() {
 
         <div className={styles.row}>
           <div className={styles.formGroup}>
-            <label className={styles.label}>Stock actual*</label>
+            <label className={styles.label}>
+              {formData.requiere_serial
+                ? "Stock (Calculado por productos seriales)"
+                : "Stock Simple*"}
+            </label>
             <input
               type="number"
               className={styles.input}
-              required
+              disabled={formData.requiere_serial}
+              required={!formData.requiere_serial}
               value={formData.stock}
+              placeholder={
+                formData.requiere_serial ? "Gestión por series" : "0"
+              }
               onChange={(e) =>
                 setFormData({
                   ...formData,
                   stock: parseInt(e.target.value) || 0,
                 })
               }
+              style={
+                formData.requiere_serial
+                  ? { background: "#f1f5f9", color: "#94a3b8" }
+                  : {}
+              }
             />
+            {formData.requiere_serial && (
+              <small
+                style={{ display: "block", marginTop: 5, color: "#64748b" }}
+              >
+                * El stock se gestiona ingresando cada producto individual en el
+                módulo de productos seriales.
+              </small>
+            )}
           </div>
           <div className={styles.formGroup}>
             <label className={styles.label}>Stock mínimo*</label>
@@ -343,64 +396,139 @@ function ProductFormContent() {
         </div>
 
         <div className={styles.checkboxGroup}>
-          <label className={styles.checkboxLabel}>
+          <label
+            className={styles.checkboxLabel}
+            title="Habilita venta decimal (0.5 Lts)"
+          >
             <input
               type="checkbox"
-              checked={formData.es_bateria}
+              checked={formData.permite_fraccion}
               onChange={(e) =>
-                setFormData({ ...formData, es_bateria: e.target.checked })
+                setFormData({ ...formData, permite_fraccion: e.target.checked })
               }
               style={{ width: 18, height: 18 }}
             />
-            Es Batería (garantía)
+            <Layers
+              size={18}
+              style={{ marginRight: 5, color: "var(--color-primary)" }}
+            />
+            Venta por Fracción (Líquido/Granel)
           </label>
 
-          <label className={styles.checkboxLabel}>
+          <label
+            className={styles.checkboxLabel}
+            title="Habilita lógica de garantía"
+          >
             <input
               type="checkbox"
-              checked={formData.es_liquido}
+              checked={formData.tiene_garantia}
               onChange={(e) =>
-                setFormData({ ...formData, es_liquido: e.target.checked })
+                setFormData({ ...formData, tiene_garantia: e.target.checked })
               }
               style={{ width: 18, height: 18 }}
             />
-            Es Líquido / Granel
+            <ShieldCheck
+              size={18}
+              style={{ marginRight: 5, color: "var(--color-secondary)" }}
+            />
+            Incluye Garantía
+          </label>
+
+          <label
+            className={styles.checkboxLabel}
+            title="Cada unidad tiene un código único"
+          >
+            <input
+              type="checkbox"
+              id="requiere_serial"
+              checked={formData.requiere_serial}
+              onChange={(e) => {
+                const isSerial = e.target.checked;
+
+                setFormData((prev) => ({
+                  ...prev,
+                  requiere_serial: isSerial,
+                  stock: isSerial ? 0 : prev.stock,
+                }));
+              }}
+              style={{ width: 18, height: 18 }}
+            />
+            <Box size={18} style={{ marginRight: 5, color: "#ea580c" }} />
+            Requiere número de serie
           </label>
         </div>
 
-        {formData.es_liquido && (
-          <div className={styles.row} style={{ marginTop: 20 }}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Capacidad del Envase</label>
-              <input
-                type="number"
-                step="0.01"
-                className={styles.input}
-                value={formData.capacidad}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    capacidad: parseFloat(e.target.value),
-                  })
-                }
-              />
+        <div
+          style={{
+            background: "#f8fafc",
+            padding: "0 20px",
+            borderRadius: "0 0 12px 12px",
+            border: "1px solid #e2e8f0",
+            borderTop: "none",
+          }}
+        >
+          {formData.permite_fraccion && (
+            <div className={styles.row} style={{ paddingTop: 20 }}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>
+                  Contenido/medida del producto (total)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.input}
+                  value={formData.capacidad}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      capacidad: parseFloat(e.target.value),
+                    })
+                  }
+                />
+                <small style={{ color: "#64748b" }}>
+                  Ej: 1 Galón = 3.78 Litros
+                </small>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Unidad de Medida</label>
+                <select
+                  className={styles.select}
+                  value={formData.unidad_medida}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unidad_medida: e.target.value })
+                  }
+                >
+                  <option value="Litros">Litros</option>
+                  <option value="Mililitros">Mililitros</option>
+                  <option value="Galones">Galones</option>
+                  <option value="Metros">Metros</option>
+                  <option value="Pies">Pies</option>
+                  <option value="Libras">Libras</option>
+                </select>
+              </div>
             </div>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Unidad de Medida</label>
-              <select
-                className={styles.select}
-                value={formData.unidad_medida}
-                onChange={(e) =>
-                  setFormData({ ...formData, unidad_medida: e.target.value })
-                }
-              >
-                <option value="Litros">Litros</option>
-                <option value="Mililitros">Mililitros</option>
-                <option value="Galones">Galones</option>
-              </select>
+          )}
+
+          {formData.tiene_garantia && (
+            <div className={styles.row} style={{ paddingTop: 20 }}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Meses de Garantía</label>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={formData.garantia_meses}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      garantia_meses: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+              <div className={styles.formGroup}></div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className={styles.actionsFooter}>
           <Link href="/productos" style={{ textDecoration: "none" }}>

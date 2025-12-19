@@ -7,7 +7,6 @@ export async function GET(request: Request) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = 20;
   const offset = (page - 1) * limit;
-  //para filtro por rango de fechas
   const startDate = searchParams.get("startDate"); // YYYY-MM-DD
   const endDate = searchParams.get("endDate"); // YYYY-MM-DD
   const showAnuladas = searchParams.get("showAnuladas") === "true";
@@ -17,12 +16,10 @@ export async function GET(request: Request) {
     let filterParams = [];
     let pCount = 1;
 
-    // Si no se piden anuladas, filtramos solo las completadas y si se piden, no aplicamos filtro de estado se muestran también las anuladas
     if (!showAnuladas) {
       filterConditions.push("v.estado IN ('completada', 'pendiente')");
     }
 
-    // Construcción dinámica del where
     if (startDate) {
       filterConditions.push(`v.fecha_venta >= $${pCount}`);
       filterParams.push(startDate);
@@ -30,7 +27,6 @@ export async function GET(request: Request) {
     }
     if (endDate) {
       filterConditions.push(`v.fecha_venta <= $${pCount}`);
-      // Agregamos hora final para cubrir todo el día seleccionado
       filterParams.push(`${endDate} 23:59:59`);
       pCount++;
     }
@@ -40,7 +36,6 @@ export async function GET(request: Request) {
         ? `WHERE ${filterConditions.join(" AND ")}`
         : "";
 
-    // Query de Datos
     const sql = `
       SELECT v.*, u.nombre as vendedor_nombre, v.cliente,
       (SELECT COUNT(*) FROM detalle_ventas WHERE venta_id = v.id) as cantidad_items
@@ -51,7 +46,6 @@ export async function GET(request: Request) {
       LIMIT $${pCount} OFFSET $${pCount + 1}
     `;
 
-    // Query de conteo (total para paginación)
     const countSql = `SELECT COUNT(*) FROM ventas v ${whereString}`;
 
     const [ventasRes, countRes] = await Promise.all([
@@ -107,11 +101,9 @@ export async function POST(request: Request) {
     );
     const ventaId = ventaRes.rows[0].id;
 
-    // Insertar detalles y restar el stock
     for (const item of items) {
-      // Obtener datos frescos del producto
       const prodRes = await client.query(
-        "SELECT stock, tipo, nombre, es_liquido, capacidad, unidad_medida FROM productos WHERE id = $1",
+        "SELECT stock, tipo, nombre, es_liquido, capacidad, unidad_medida, requiere_serial FROM productos WHERE id = $1",
         [item.producto_id]
       );
 
@@ -120,21 +112,41 @@ export async function POST(request: Request) {
       }
 
       const productoDB = prodRes.rows[0];
-
-      //variable para rastrear si esta venta abrió una botella (creó un parcial), esto es crucial para que el botón "Anular" sepa qué borrar después
+      const datosExtraObj = item.datos_extra || {};
       let createdParcialId = null;
 
-      if (productoDB.tipo === "producto") {
-        if (item.datos_extra?.es_item_parcial && item.datos_extra?.parcial_id) {
-          const parcialId = item.datos_extra.parcial_id;
+      if (productoDB.requiere_serial) {
+        const serialVendido = datosExtraObj.numero_serie;
 
+        if (!serialVendido) {
+          throw new Error(
+            `El producto ${productoDB.nombre} requiere un número de serie.`
+          );
+        }
+
+        const updateSerialRes = await client.query(
+          `UPDATE existencias_serializadas 
+           SET estado = 'vendido', venta_id = $1, updated_at = NOW()
+           WHERE serial = $2 AND producto_id = $3 AND estado = 'disponible'`,
+          [ventaId, serialVendido, item.producto_id]
+        );
+
+        if (updateSerialRes.rowCount === 0) {
+          throw new Error(
+            `El serial ${serialVendido} de ${productoDB.nombre} no está disponible o ya fue vendido.`
+          );
+        }
+      } else if (productoDB.tipo === "producto") {
+        if (datosExtraObj.es_item_parcial && datosExtraObj.parcial_id) {
+          const parcialId = datosExtraObj.parcial_id;
           const parcCheck = await client.query(
             "SELECT cantidad_restante FROM inventario_parcial WHERE id=$1",
             [parcialId]
           );
+
           if (
             parcCheck.rows.length === 0 ||
-            parcCheck.rows[0].cantidad_restante < item.cantidad
+            parseFloat(parcCheck.rows[0].cantidad_restante) < item.cantidad
           ) {
             throw new Error(`El item abierto ya no tiene suficiente cantidad.`);
           }
@@ -159,15 +171,14 @@ export async function POST(request: Request) {
           let remanente = 0;
 
           if (productoDB.es_liquido && productoDB.capacidad > 0) {
-            //ejemplo de venta 7L, Capacidad 5L - 7 / 5 = 1.4 -> necesito 2 botellas
             const botellasNecesarias = Math.ceil(
               item.cantidad / productoDB.capacidad
             );
             stockARestar = botellasNecesarias;
-
             const totalLiquido = botellasNecesarias * productoDB.capacidad;
             remanente = totalLiquido - item.cantidad;
           }
+
           await client.query(
             "UPDATE productos SET stock = stock - $1 WHERE id = $2",
             [stockARestar, item.producto_id]
@@ -187,8 +198,6 @@ export async function POST(request: Request) {
         }
       }
 
-      const datosExtraObj = item.datos_extra || {};
-
       if (createdParcialId) {
         datosExtraObj.created_parcial_id = createdParcialId;
       }
@@ -199,20 +208,16 @@ export async function POST(request: Request) {
         datosExtraObj.es_liquido = true;
       }
 
-      const datosExtraJson = JSON.stringify(datosExtraObj);
-
       await client.query(
-        `
-        INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal, datos_extra)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `,
+        `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal, datos_extra)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           ventaId,
           item.producto_id,
           item.cantidad,
           item.precio,
           item.cantidad * item.precio,
-          datosExtraJson,
+          JSON.stringify(datosExtraObj),
         ]
       );
     }
@@ -222,7 +227,6 @@ export async function POST(request: Request) {
   } catch (error: any) {
     await client.query("ROLLBACK");
 
-    //manejo específico de error de duplicado (postgres error 23505)
     if (
       error.code === "23505" &&
       error.constraint?.includes("idempotency_key")
@@ -232,9 +236,10 @@ export async function POST(request: Request) {
           error: "DUPLICATE_TRANSACTION",
           message: "Esta venta ya fue procesada previamente",
         },
-        { status: 409 } //409 Conflict
+        { status: 409 }
       );
     }
+    console.error("Error al procesar venta:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   } finally {
     client.release();

@@ -11,6 +11,8 @@ import {
   ShoppingCart,
   ScanBarcode,
   ArrowLeft,
+  Box,
+  Droplets,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +26,7 @@ interface CartItem {
   cantidad: number;
   subtotal: number;
   es_bateria: boolean;
+  requiere_serial: boolean;
   stock_max: number;
   datos_extra?: {
     descripcion_personalizada?: string;
@@ -32,9 +35,12 @@ interface CartItem {
     es_item_parcial?: boolean;
     parcial_id?: number;
     descripcion_unidad?: string;
+    numero_serie?: string;
+    garantia_meses?: number;
     [key: string]: any;
   } | null;
 }
+
 function POSContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -50,10 +56,9 @@ function POSContent() {
 
   const [scannerOpen, setScannerOpen] = useState(false);
 
-  //estado para modal de concepto libre
   const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
   const [customItemData, setCustomItemData] = useState({
-    tipo: "servicio", //servicio o tercero
+    tipo: "servicio",
     descripcion: "",
     precio: "",
   });
@@ -64,14 +69,17 @@ function POSContent() {
   );
   const [liquidQuantity, setLiquidQuantity] = useState("");
 
-  //referencia para mantener el foco en el scanner
+  const [serialModalOpen, setSerialModalOpen] = useState(false);
+  const [pendingSerialProduct, setPendingSerialProduct] = useState<any | null>(
+    null
+  );
+  const [serialInput, setSerialInput] = useState("");
+
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const serialInputRef = useRef<HTMLInputElement>(null);
 
-  //obtener usuario actual para saber quien hizo la venta
   const [userId, setUserId] = useState<string | null>(null);
-
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
-
   const [discount, setDiscount] = useState<string>("");
 
   useEffect(() => {
@@ -81,12 +89,16 @@ function POSContent() {
       if (data.user) setUserId(data.user.id);
     };
     getUser();
-    //se genera el id solo en el cliente para evitar errores de hidratación
     setIdempotencyKey(crypto.randomUUID());
-    searchInputRef.current?.focus(); //auto foco al entrar
+    searchInputRef.current?.focus();
   }, []);
 
-  //lógica para cargar una venta para poder editarla
+  useEffect(() => {
+    if (serialModalOpen && serialInputRef.current) {
+      setTimeout(() => serialInputRef.current?.focus(), 100);
+    }
+  }, [serialModalOpen]);
+
   useEffect(() => {
     if (editId) {
       cargarVentaExistente(editId);
@@ -100,28 +112,46 @@ function POSContent() {
       if (!res.ok) throw new Error("No se pudo cargar la venta");
 
       const data = await res.json();
-
-      //primero se carga el cliente y su estado
       setClientName(data.cliente || "");
       setIsPending(data.estado === "pendiente");
       setDiscount(data.descuento || 0);
 
-      //ahora los datos del detalle de la venta se transforman para mostrarse en el carrito
-      const itemsFormateados = data.detalles.map((d: any) => ({
-        id: d.producto_id,
-        //usamos la descripción personalizada o nombre del producto (puede ser null)
-        nombre: d.datos_extra?.descripcion_personalizada
-          ? d.datos_extra.descripcion_personalizada.toUpperCase()
-          : d.producto_nombre,
-        codigo_barras: d.codigo_barras,
-        precio: parseFloat(d.precio_unitario),
-        cantidad: parseFloat(d.cantidad),
-        subtotal: parseFloat(d.subtotal),
-        es_bateria: d.producto_es_bateria,
-        //en edición simplificamos el stock max visual para no bloquear al usuario ya que la validación real se hará en el backend al guardar
-        stock_max: 9999,
-        datos_extra: d.datos_extra,
-      }));
+      const itemsFormateados = data.detalles.map((d: any) => {
+        const capacidad = parseFloat(d.producto?.capacidad || d.capacidad || 1);
+
+        const stockEnDb = parseFloat(d.producto?.stock || 0);
+
+        let stockMaxDisponible;
+
+        const esLiquido = d.datos_extra?.es_liquido;
+
+        if (esLiquido) {
+          const stockBodegaLitros =
+            d.producto?.origen === "parcial"
+              ? stockEnDb
+              : stockEnDb * capacidad;
+
+          stockMaxDisponible = stockBodegaLitros + parseFloat(d.cantidad);
+        } else {
+          stockMaxDisponible = stockEnDb + parseFloat(d.cantidad);
+        }
+
+        return {
+          id: d.producto_id,
+          nombre: d.datos_extra?.descripcion_personalizada
+            ? d.datos_extra.descripcion_personalizada.toUpperCase()
+            : d.producto_nombre,
+          codigo_barras: d.codigo_barras,
+          precio: parseFloat(d.precio_unitario),
+          cantidad: parseFloat(d.cantidad),
+          subtotal: parseFloat(d.subtotal),
+          es_bateria: d.producto_es_bateria,
+          requiere_serial:
+            !!d.datos_extra?.numero_serie || !!d.datos_extra?.codigo_bateria,
+          stock_max: stockMaxDisponible,
+          datos_extra: d.datos_extra,
+        };
+      });
 
       setCart(itemsFormateados);
     } catch (error) {
@@ -132,37 +162,20 @@ function POSContent() {
     }
   };
 
-  //lógica común para buscar código (ya sea por teclado o cámara)
-  const processCodeSearch = async (code: string) => {
-    //buscar coincidencia exacta
-    const resExact = await fetch(`/api/productos/buscar-codigo?codigo=${code}`);
-
-    if (resExact.ok) {
-      const producto = await resExact.json();
-      addItemToCart(producto);
-      setQuery("");
-      return true;
-    }
-    return false;
-  };
-
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!query.trim()) return;
 
-    //Intentamos buscar por código exacto
     const resExact = await fetch(
       `/api/productos/buscar-codigo?codigo=${query}`
     );
-
     if (resExact.ok) {
       const producto = await resExact.json();
       addItemToCart(producto);
-      setQuery(""); //limpia el input para siguiente escaneo
+      setQuery("");
       return;
     }
 
-    //si no es código exacto, buscamos por nombre del producto ((like)
     const resSearch = await fetch(`/api/productos?q=${query}&page=1`);
     const dataSearch = await resSearch.json();
     if (dataSearch.data && dataSearch.data.length > 0) {
@@ -173,33 +186,52 @@ function POSContent() {
     }
   };
 
-  //callback cuando la cámara detecta algo
   const handleScanDetected = async (code: string) => {
-    setScannerOpen(false); //cerramos el modal de cámara
-    toast.info(`Código detectado: ${code}`); //feedback visual rápido
+    if (serialModalOpen) {
+      setSerialInput(code);
+      toast.success("Serial escaneado");
+      return;
+    }
+    setScannerOpen(false);
+    toast.info(`Código detectado: ${code}`);
 
-    const found = await processCodeSearch(code);
-    if (!found) {
-      //si no es un código exacto, intentamos buscarlo como texto por si acaso
+    const resExact = await fetch(`/api/productos/buscar-codigo?codigo=${code}`);
+    if (resExact.ok) {
+      const producto = await resExact.json();
+      addItemToCart(producto);
+    } else {
       setQuery(code);
-      toast.warning(
-        "Código no registrado exactamente. Buscando coincidencias..."
-      );
-      //disparamos búsqueda por nombre/texto
       const resSearch = await fetch(`/api/productos?q=${code}&page=1`);
       const dataSearch = await resSearch.json();
       if (dataSearch.data && dataSearch.data.length > 0) {
         setSearchResults(dataSearch.data);
       } else {
-        toast.error("Producto no encontrado en el sistema");
+        toast.error("Producto no encontrado");
       }
     }
   };
 
-  const addItemToCart = (producto: any) => {
-    //verificar stock solo si no estoy en modo edición
+  const addItemToCart = (productoRaw: any) => {
+    const producto = {
+      ...productoRaw,
+      stock: parseFloat(productoRaw.stock) || 0,
+      precio: parseFloat(productoRaw.precio) || 0,
+      capacidad: parseFloat(productoRaw.capacidad) || 1,
+      es_liquido: productoRaw.permite_fraccion || productoRaw.es_liquido,
+      requiere_serial: productoRaw.requiere_serial,
+    };
+
     if (!editId && producto.tipo === "producto" && producto.stock <= 0) {
       toast.error(`¡Sin stock! ${producto.nombre} está agotado.`);
+      return;
+    }
+
+    if (producto.requiere_serial) {
+      setPendingSerialProduct(producto);
+
+      setSerialInput(producto.numero_serie_detectado || "");
+
+      setSerialModalOpen(true);
       return;
     }
 
@@ -210,8 +242,9 @@ function POSContent() {
       return;
     }
 
-    const extraData = producto.es_bateria ? { es_bateria: true } : null;
-
+    const extraData = producto.es_bateria
+      ? { es_bateria: true, garantia_meses: 12 }
+      : null;
     addToCartFinal(producto, extraData);
   };
 
@@ -221,29 +254,46 @@ function POSContent() {
     qtyOverride: number = 1
   ) => {
     setCart((prev) => {
-      //usamos el id y si tiene datos extra para diferenciar items iguales y si es item libre, también para agruparlo si tiene la misma descripción
       const existingIndex = prev.findIndex(
         (item) =>
           item.id === producto.id &&
           JSON.stringify(item.datos_extra) === JSON.stringify(extraData)
       );
 
+      let stockMaxReal = producto.stock;
+
+      if (producto.es_liquido && producto.tipo === "producto") {
+        if (producto.origen === "parcial") {
+          stockMaxReal = producto.stock;
+        } else {
+          stockMaxReal = producto.stock * producto.capacidad;
+        }
+      }
+
       if (existingIndex !== -1) {
-        const existing = prev[existingIndex];
-        //validar stock solo si no es edición y es producto físico
-        if (
-          !editId &&
-          producto.tipo === "producto" &&
-          existing.cantidad + qtyOverride > producto.stock
-        ) {
-          toast.warning("Stock máximo alcanzado");
+        if (producto.requiere_serial) {
+          toast.warning("Este número de serie ya está en el carrito.");
           return prev;
         }
+
+        const existing = prev[existingIndex];
+        const nuevoTotal = existing.cantidad + qtyOverride;
+
+        if (producto.tipo === "producto" && nuevoTotal > stockMaxReal) {
+          const unidad = producto.es_liquido
+            ? producto.unidad_medida || "L"
+            : "unidades";
+          toast.warning(
+            `Stock insuficiente. Disponible: ${stockMaxReal} ${unidad}`
+          );
+          return prev;
+        }
+
         const updatedCart = [...prev];
         updatedCart[existingIndex] = {
           ...existing,
-          cantidad: existing.cantidad + qtyOverride,
-          subtotal: (existing.cantidad + qtyOverride) * existing.precio,
+          cantidad: nuevoTotal,
+          subtotal: nuevoTotal * existing.precio,
         };
         return updatedCart;
       }
@@ -258,42 +308,171 @@ function POSContent() {
           cantidad: qtyOverride,
           subtotal: parseFloat(producto.precio) * qtyOverride,
           es_bateria: producto.es_bateria || !!extraData?.es_bateria,
-          stock_max: producto.stock,
+          requiere_serial:
+            producto.requiere_serial || !!extraData?.numero_serie,
+          stock_max: stockMaxReal,
           datos_extra: extraData,
         },
       ];
     });
 
-    if (!extraData?.es_liquido) toast.success("Agregado");
+    if (!extraData?.es_liquido && !producto.requiere_serial)
+      toast.success("Agregado");
     setSearchResults([]);
     setQuery("");
     searchInputRef.current?.focus();
   };
 
-  const updateQuantity = (id: number, delta: number) => {
-    setCart((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const currentQty =
-            typeof item.cantidad === "string"
-              ? parseFloat(item.cantidad)
-              : item.cantidad;
-          const newQty = currentQty + delta;
-          if (newQty < 1) return item;
-          if (!editId && newQty > item.stock_max) {
-            toast.warning("Stock insuficiente");
-            return item;
-          }
-          return { ...item, cantidad: newQty, subtotal: newQty * item.precio };
-        }
-        return item;
-      })
+  const confirmLiquidAdd = () => {
+    if (!pendingLiquidProduct || !liquidQuantity) return;
+    const qty = parseFloat(liquidQuantity);
+
+    if (isNaN(qty) || qty <= 0) {
+      toast.error("Cantidad inválida");
+      return;
+    }
+
+    let stockDisponibleLitros = 0;
+    if (pendingLiquidProduct.origen === "parcial") {
+      stockDisponibleLitros = pendingLiquidProduct.stock;
+    } else {
+      stockDisponibleLitros =
+        pendingLiquidProduct.stock * pendingLiquidProduct.capacidad;
+    }
+
+    if (qty > stockDisponibleLitros) {
+      toast.error(
+        `Solo quedan ${stockDisponibleLitros} ${pendingLiquidProduct.unidad_medida}`
+      );
+      return;
+    }
+
+    let precioPorUnidadMedida = pendingLiquidProduct.precio;
+
+    if (pendingLiquidProduct.capacidad > 0) {
+      precioPorUnidadMedida =
+        pendingLiquidProduct.precio / pendingLiquidProduct.capacidad;
+    }
+
+    const extra = {
+      es_liquido: true,
+      es_item_parcial: pendingLiquidProduct.origen === "parcial",
+      parcial_id: pendingLiquidProduct.parcial_id,
+      descripcion_unidad: pendingLiquidProduct.unidad_medida,
+      unidad_medida: pendingLiquidProduct.unidad_medida,
+    };
+
+    addToCartFinal(
+      {
+        ...pendingLiquidProduct,
+        precio: precioPorUnidadMedida,
+        stock: pendingLiquidProduct.stock,
+      },
+      extra,
+      qty
     );
+
+    setLiquidModalOpen(false);
+    setPendingLiquidProduct(null);
+  };
+
+  const confirmSerialAdd = () => {
+    if (!pendingSerialProduct || !serialInput.trim()) return;
+    const yaEnCarrito = cart.some(
+      (item) =>
+        item.id === pendingSerialProduct.id &&
+        item.datos_extra?.numero_serie === serialInput.trim()
+    );
+    if (yaEnCarrito) {
+      toast.error("Este número de serie ya fue agregado al carrito");
+      setSerialInput("");
+      return;
+    }
+    const extra = {
+      numero_serie: serialInput.trim(),
+      garantia_meses: pendingSerialProduct.garantia_meses || 0,
+    };
+    addToCartFinal(pendingSerialProduct, extra, 1);
+    toast.success(`Producto con serie ${serialInput} agregado`);
+    setSerialModalOpen(false);
+    setPendingSerialProduct(null);
+    setSerialInput("");
+  };
+
+  const updateQuantity = (index: number, delta: number) => {
+    setCart((prev) => {
+      const newCart = [...prev];
+      const item = newCart[index];
+      const newQty = parseFloat((item.cantidad + delta).toFixed(2));
+
+      if (newQty < 0.01) return prev;
+      if (item.requiere_serial && newQty > 1) {
+        toast.warning("Los productos seriales se agregan uno por uno.");
+        return prev;
+      }
+
+      if (newQty > item.stock_max) {
+        const unidad = item.datos_extra?.es_liquido
+          ? item.datos_extra.descripcion_unidad || "L"
+          : "unidades";
+        toast.warning(`Stock insuficiente (Máx: ${item.stock_max} ${unidad})`);
+        return prev;
+      }
+
+      newCart[index] = {
+        ...item,
+        cantidad: newQty,
+        subtotal: newQty * item.precio,
+      };
+      return newCart;
+    });
   };
 
   const removeItem = (index: number) => {
-    //usamos index en lugar de ID porque puede haber varias baterías iguales con distinto código
     setCart((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleManualQuantity = (index: number, valueStr: string) => {
+    if (valueStr === "") {
+      setCart((prev) => {
+        const newCart = [...prev];
+        newCart[index].cantidad = 0;
+        return newCart;
+      });
+      return;
+    }
+
+    const value = parseFloat(valueStr);
+    if (isNaN(value)) return;
+
+    setCart((prev) => {
+      const item = prev[index];
+
+      if (!editId && value > item.stock_max) {
+        const unidad = item.datos_extra?.es_liquido
+          ? item.datos_extra.descripcion_unidad || "L"
+          : "unidades";
+        toast.warning(`Máximo disponible: ${item.stock_max} ${unidad}`);
+
+        const adjustedQty = item.stock_max;
+
+        const newCart = [...prev];
+        newCart[index] = {
+          ...item,
+          cantidad: adjustedQty,
+          subtotal: adjustedQty * item.precio,
+        };
+        return newCart;
+      }
+
+      const newCart = [...prev];
+      newCart[index] = {
+        ...item,
+        cantidad: value,
+        subtotal: value * item.precio,
+      };
+      return newCart;
+    });
   };
 
   const addCustomItem = async () => {
@@ -301,38 +480,26 @@ function POSContent() {
       toast.error("Completa descripción y precio");
       return;
     }
-    //determinar qué código buscar según el tipo seleccionado
     const codigoBuscar =
       customItemData.tipo === "servicio" ? "GEN-SERV" : "GEN-EXT";
-
     try {
-      //buscar el ID del producto genérico en la BD
       const res = await fetch(
         `/api/productos/buscar-codigo?codigo=${codigoBuscar}`
       );
-      if (!res.ok)
-        throw new Error(
-          "No se encontraron los productos genéricos en el sistema"
-        );
-
+      if (!res.ok) throw new Error("No se encontraron productos genéricos");
       const productoGenerico = await res.json();
-
-      //construir el objeto para el carrito, sobrescribimos el nombre visualmente y guardamos la descripción real en datos_extra
       const itemParaCarrito = {
         ...productoGenerico,
-        nombre: customItemData.descripcion.toUpperCase(), //para que se vea bonito en la lista
+        nombre: customItemData.descripcion.toUpperCase(),
         precio: parseFloat(customItemData.precio),
-        es_bateria: false,
-        //aquí guardo la descripción original por si acaso
+        requiere_serial: false,
+        stock: 9999,
         datos_extra: {
           descripcion_personalizada: customItemData.descripcion,
           es_item_libre: true,
         },
       };
-
-      //agregar al carrito y pasamos datos_extra para que la lógica de agrupar sepa que son distintos si tienen distinta descripción
       addToCartFinal(itemParaCarrito, itemParaCarrito.datos_extra);
-
       setCustomItemModalOpen(false);
       setCustomItemData({ tipo: "servicio", descripcion: "", precio: "" });
     } catch (e: any) {
@@ -340,7 +507,6 @@ function POSContent() {
     }
   };
 
-  //lógica para el cobro
   const subtotal = cart.reduce((acc, item) => acc + item.subtotal, 0);
   const discountValue = parseFloat(discount) || 0;
   const total = Math.max(0, subtotal - discountValue);
@@ -348,11 +514,10 @@ function POSContent() {
   const handlePay = async () => {
     if (cart.length === 0) return;
     if (discountValue > subtotal) {
-      toast.error("El descuento no puede ser mayor al total de la venta");
+      toast.error("El descuento no puede ser mayor al total");
       return;
     }
     setLoadingPay(true);
-
     try {
       const payload = {
         usuario_id: userId,
@@ -368,34 +533,27 @@ function POSContent() {
           datos_extra: item.datos_extra,
         })),
       };
-
       const url = editId ? `/api/ventas/${editId}` : "/api/ventas";
       const method = editId ? "PUT" : "POST";
-
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 409 || data.error === "DUPLICATE_TRANSACTION") {
-          toast.warning("Esta venta ya fue procesada anteriormente.");
-          //limpiamos todo porque la venta sí se hizo, solo que el frontend no se enteró a la primera
+          toast.warning("Venta ya procesada.");
           setCart([]);
-          setSearchResults([]);
           setClientName("");
           setIsPending(false);
           setDiscount("");
-          setIdempotencyKey(crypto.randomUUID()); // Regenerar para la próxima
+          setIdempotencyKey(crypto.randomUUID());
           return;
         }
         throw new Error(data.error || "Error");
       }
-
       toast.success(editId ? "Venta actualizada" : "Venta registrada");
-
       if (editId) router.push("/ventas");
       else {
         setCart([]);
@@ -403,7 +561,6 @@ function POSContent() {
         setClientName("");
         setIsPending(false);
         setDiscount("");
-        //regenerar llave para la siguiente venta
         setIdempotencyKey(crypto.randomUUID());
       }
     } catch (error: any) {
@@ -411,46 +568,6 @@ function POSContent() {
     } finally {
       setLoadingPay(false);
     }
-  };
-
-  const confirmLiquidAdd = () => {
-    if (!pendingLiquidProduct || !liquidQuantity) return;
-    const qty = parseFloat(liquidQuantity);
-    if (isNaN(qty) || qty <= 0) {
-      toast.error("Cantidad inválida");
-      return;
-    }
-
-    if (
-      pendingLiquidProduct.origen === "parcial" &&
-      qty > pendingLiquidProduct.stock
-    ) {
-      toast.error(
-        `Solo quedan ${pendingLiquidProduct.stock} ${pendingLiquidProduct.unidad_medida}`
-      );
-      return;
-    }
-
-    let precioFinal = pendingLiquidProduct.precio;
-    if (pendingLiquidProduct.capacidad > 0) {
-      precioFinal =
-        pendingLiquidProduct.precio / pendingLiquidProduct.capacidad;
-    }
-
-    const extra = {
-      es_liquido: true,
-      es_item_parcial: pendingLiquidProduct.origen === "parcial",
-      parcial_id: pendingLiquidProduct.parcial_id,
-      descripcion_unidad: pendingLiquidProduct.unidad_medida,
-    };
-
-    addToCartFinal(
-      { ...pendingLiquidProduct, precio: precioFinal },
-      extra,
-      qty
-    );
-    setLiquidModalOpen(false);
-    setPendingLiquidProduct(null);
   };
 
   if (isLoadingData) {
@@ -463,7 +580,7 @@ function POSContent() {
           height: "100vh",
         }}
       >
-        Cargando datos de venta...
+        Cargando datos...
       </div>
     );
   }
@@ -471,7 +588,6 @@ function POSContent() {
   return (
     <>
       <Toaster position="top-center" richColors />
-
       {scannerOpen && (
         <BarcodeScanner
           onDetected={handleScanDetected}
@@ -551,7 +667,6 @@ function POSContent() {
             <h2>Ticket de Venta</h2>
             <small>{new Date().toLocaleDateString()}</small>
           </div>
-
           <div className={styles.clientInputContainer}>
             <input
               className={styles.clientInput}
@@ -572,16 +687,34 @@ function POSContent() {
                   <div className={styles.itemInfo}>
                     <div style={{ fontWeight: "bold" }}>{item.nombre}</div>
                     <small>{formatoQuetzal.format(item.precio)} c/u</small>
-                    {item.es_bateria && (
+                    {item.requiere_serial && item.datos_extra?.numero_serie && (
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#ea580c",
+                          marginTop: 2,
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Box size={12} style={{ marginRight: 4 }} />
+                        SN: {item.datos_extra.numero_serie}
+                      </div>
+                    )}
+                    {item.datos_extra?.es_liquido && (
                       <div
                         style={{
                           fontSize: "0.75rem",
                           color: "var(--color-primary)",
                           marginTop: 2,
+                          display: "flex",
+                          alignItems: "center",
                         }}
                       >
-                        Garantía: {item.datos_extra?.garantia_meses} m - Cód:{" "}
-                        {item.datos_extra?.codigo_bateria}
+                        <Droplets size={12} style={{ marginRight: 4 }} />
+                        {item.datos_extra.es_item_parcial
+                          ? "Granel"
+                          : "Líquido"}
                       </div>
                     )}
                   </div>
@@ -598,25 +731,47 @@ function POSContent() {
                     <div className={styles.qtyControl}>
                       <button
                         className={styles.qtyBtn}
-                        onClick={() => updateQuantity(item.id, -1)}
+                        onClick={() => updateQuantity(index, -1)}
                       >
                         <Minus size={12} />
                       </button>
-                      <span
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={item.cantidad === 0 ? "" : item.cantidad}
+                        onChange={(e) =>
+                          handleManualQuantity(index, e.target.value)
+                        }
                         style={{
-                          minWidth: 30,
+                          width: "60px",
                           textAlign: "center",
+                          border: "1px solid #ddd",
+                          borderRadius: "4px",
+                          margin: "0 5px",
                           fontSize: "0.9rem",
                         }}
-                      >
-                        {item.cantidad}{" "}
-                        {item.datos_extra?.es_liquido
-                          ? formatUnit(item.datos_extra.descripcion_unidad)
-                          : ""}
-                      </span>
+                      />
+                      {item.datos_extra?.descripcion_unidad ? (
+                        <span
+                          style={{
+                            fontSize: "0.7rem",
+                            color: "#666",
+                            marginRight: "5px",
+                          }}
+                        >
+                          {formatUnit(item.datos_extra.descripcion_unidad)}
+                        </span>
+                      ) : null}
                       <button
                         className={styles.qtyBtn}
-                        onClick={() => updateQuantity(item.id, 1)}
+                        onClick={() => updateQuantity(index, 1)}
+                        disabled={item.requiere_serial}
+                        style={
+                          item.requiere_serial
+                            ? { opacity: 0.5, cursor: "not-allowed" }
+                            : {}
+                        }
                       >
                         <Plus size={12} />
                       </button>
@@ -655,7 +810,6 @@ function POSContent() {
                 {formatoQuetzal.format(subtotal)}
               </span>
             </div>
-
             <div
               style={{
                 marginBottom: 15,
@@ -741,7 +895,6 @@ function POSContent() {
               <h3 style={{ marginTop: 0, color: "var(--color-secondary)" }}>
                 Agregar Concepto Libre
               </h3>
-
               <div style={{ marginBottom: 15 }}>
                 <label
                   style={{
@@ -781,7 +934,6 @@ function POSContent() {
                   </button>
                 </div>
               </div>
-
               <div style={{ marginBottom: 15 }}>
                 <label className={styles.label}>Descripción</label>
                 <input
@@ -797,7 +949,6 @@ function POSContent() {
                   autoFocus
                 />
               </div>
-
               <div style={{ marginBottom: 20 }}>
                 <label className={styles.label}>Precio (Q)</label>
                 <input
@@ -813,7 +964,6 @@ function POSContent() {
                   }
                 />
               </div>
-
               <div
                 style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
               >
@@ -840,6 +990,7 @@ function POSContent() {
             </div>
           </div>
         )}
+
         {liquidModalOpen && pendingLiquidProduct && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
@@ -849,7 +1000,6 @@ function POSContent() {
               <p>
                 Producto: <b>{pendingLiquidProduct.nombre}</b>
               </p>
-
               {pendingLiquidProduct.origen === "parcial" ? (
                 <div
                   style={{
@@ -881,7 +1031,6 @@ function POSContent() {
                   {pendingLiquidProduct.unidad_medida}
                 </div>
               )}
-
               <div style={{ marginBottom: 20 }}>
                 <label className={styles.label}>
                   Cantidad a Vender ({pendingLiquidProduct.unidad_medida})
@@ -897,7 +1046,6 @@ function POSContent() {
                   onKeyDown={(e) => e.key === "Enter" && confirmLiquidAdd()}
                 />
               </div>
-
               <div
                 style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
               >
@@ -924,13 +1072,79 @@ function POSContent() {
             </div>
           </div>
         )}
+
+        {serialModalOpen && pendingSerialProduct && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+              <h3 style={{ marginTop: 0, color: "#ea580c" }}>
+                Producto Serial
+              </h3>
+              <p style={{ marginBottom: 10 }}>
+                Estás agregando: <b>{pendingSerialProduct.nombre}</b>
+              </p>
+              <p
+                style={{ fontSize: "0.9rem", color: "#666", marginBottom: 15 }}
+              >
+                Este producto requiere registrar el número de serie único de la
+                unidad que se entrega.
+              </p>
+              <div style={{ marginBottom: 20 }}>
+                <label className={styles.label}>
+                  Escanear o Escribir N° Serie
+                </label>
+                <div style={{ display: "flex", gap: 5 }}>
+                  <input
+                    ref={serialInputRef}
+                    className={styles.searchInput}
+                    placeholder="Escanea el código del serial..."
+                    value={serialInput}
+                    onChange={(e) => setSerialInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && confirmSerialAdd()}
+                  />
+                  <button
+                    onClick={() => setScannerOpen(true)}
+                    className={styles.scanButton}
+                    title="Abrir cámara"
+                  >
+                    <ScanBarcode size={20} />
+                  </button>
+                </div>
+              </div>
+              <div
+                style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
+              >
+                <button
+                  onClick={() => setSerialModalOpen(false)}
+                  style={{
+                    padding: "10px 20px",
+                    border: "1px solid #ccc",
+                    background: "transparent",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmSerialAdd}
+                  className={styles.payButton}
+                  style={{
+                    width: "auto",
+                    padding: "10px 25px",
+                    background: "#ea580c",
+                  }}
+                >
+                  Confirmar Serial
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
 }
-
 export default function POSPage() {
-  //es requerido encerrar en suspense la función cuando se implementa useSearchParams dentro de ella con el objetivo de mantener la integridad de los datos
   return (
     <Suspense fallback={<div>Cargando editor de ventas...</div>}>
       <POSContent />

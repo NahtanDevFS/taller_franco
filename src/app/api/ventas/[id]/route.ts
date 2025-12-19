@@ -3,11 +3,10 @@ import { pool } from "@/lib/db";
 
 type Params = Promise<{ id: string }>;
 
-//función para manejar la lógica compleja de convertir litros a botellas y limpiar parciales
 async function restaurarStock(client: any, ventaId: string) {
   const oldDetailsRes = await client.query(
     `SELECT d.id, d.producto_id, d.cantidad, d.datos_extra, 
-            p.tipo, p.es_liquido, p.capacidad
+            p.tipo, p.es_liquido, p.capacidad, p.requiere_serial
      FROM detalle_ventas d
      JOIN productos p ON d.producto_id = p.id
      WHERE d.venta_id = $1`,
@@ -15,23 +14,29 @@ async function restaurarStock(client: any, ventaId: string) {
   );
 
   for (const item of oldDetailsRes.rows) {
-    if (item.tipo === "producto") {
-      const datosExtra = item.datos_extra || {};
+    const datosExtra = item.datos_extra || {};
 
-      //traer un item de inventario parcial
+    if (item.requiere_serial) {
+      const serial = datosExtra.numero_serie || datosExtra.codigo_bateria;
+
+      if (serial) {
+        await client.query(
+          `UPDATE existencias_serializadas 
+           SET estado = 'disponible', venta_id = NULL, updated_at = NOW() 
+           WHERE producto_id = $1 AND serial = $2`,
+          [item.producto_id, serial]
+        );
+      }
+    } else if (item.tipo === "producto") {
       if (datosExtra.es_item_parcial && datosExtra.parcial_id) {
-        //devolver el líquido a la botella abierta
         await client.query(
           "UPDATE inventario_parcial SET cantidad_restante = cantidad_restante + $1, activo = true WHERE id = $2",
           [item.cantidad, datosExtra.parcial_id]
         );
-      }
-      //traer un item del inventario normal
-      else {
+      } else {
         let cantidadARestar = 0;
 
         if (item.es_liquido && item.capacidad > 0) {
-          //lógica para convertir por ejemplo, litros a una garrafa de aceite
           cantidadARestar = Math.ceil(item.cantidad / item.capacidad);
         } else {
           cantidadARestar = Math.ceil(item.cantidad);
@@ -70,7 +75,17 @@ export async function GET(req: Request, { params }: { params: Params }) {
       );
 
     const detallesRes = await pool.query(
-      `SELECT d.*, p.nombre as producto_nombre, p.codigo_barras 
+      `SELECT 
+          d.*, 
+          p.nombre as producto_nombre, 
+          p.codigo_barras,
+          p.stock,             
+          p.capacidad,        
+          p.es_liquido,
+          p.tipo,
+          p.unidad_medida,
+          p.requiere_serial,
+          p.es_bateria
        FROM detalle_ventas d 
        JOIN productos p ON d.producto_id = p.id 
        WHERE d.venta_id = $1`,
@@ -114,6 +129,7 @@ export async function DELETE(req: Request, { params }: { params: Params }) {
     });
   } catch (error: any) {
     await client.query("ROLLBACK");
+    console.error("Error anulando venta:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   } finally {
     client.release();
@@ -144,16 +160,44 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
     for (const item of items) {
       const prodRes = await client.query(
-        "SELECT stock, tipo, nombre, es_liquido, capacidad FROM productos WHERE id = $1",
+        "SELECT stock, tipo, nombre, es_liquido, capacidad, requiere_serial, unidad_medida FROM productos WHERE id = $1",
         [item.producto_id]
       );
       if (prodRes.rows.length === 0)
         throw new Error(`Producto ${item.producto_id} no existe`);
       const prodDB = prodRes.rows[0];
 
+      let createdParcialId = null;
+      let datosExtraObj = item.datos_extra || {};
+
       if (prodDB.tipo === "producto") {
-        if (item.datos_extra?.es_item_parcial && item.datos_extra?.parcial_id) {
-          const parcialId = item.datos_extra.parcial_id;
+        if (prodDB.requiere_serial) {
+          const serial = datosExtraObj.numero_serie;
+          if (!serial)
+            throw new Error(
+              `El producto ${prodDB.nombre} requiere un número de serie`
+            );
+
+          const serialCheck = await client.query(
+            "SELECT estado FROM existencias_serializadas WHERE serial = $1 AND producto_id = $2",
+            [serial, item.producto_id]
+          );
+
+          if (serialCheck.rowCount === 0)
+            throw new Error(`Serial ${serial} no existe en inventario`);
+
+          if (serialCheck.rows[0].estado !== "disponible") {
+            throw new Error(`El serial ${serial} ya no está disponible`);
+          }
+
+          await client.query(
+            `UPDATE existencias_serializadas 
+             SET estado = 'vendido', venta_id = $1, updated_at = NOW() 
+             WHERE serial = $2 AND producto_id = $3`,
+            [id, serial, item.producto_id]
+          );
+        } else if (datosExtraObj.es_item_parcial && datosExtraObj.parcial_id) {
+          const parcialId = datosExtraObj.parcial_id;
           await client.query(
             "UPDATE inventario_parcial SET cantidad_restante = cantidad_restante - $1 WHERE id = $2",
             [item.cantidad, parcialId]
@@ -171,20 +215,16 @@ export async function PUT(req: Request, { params }: { params: Params }) {
               "UPDATE productos SET stock = stock - 1 WHERE id = $1",
               [item.producto_id]
             );
-
             const remanente = prodDB.capacidad - item.cantidad;
             const codigoRef = `OPEN-${Date.now()}-${Math.floor(
               Math.random() * 1000
             )}`;
-
             const parcRes = await client.query(
               `INSERT INTO inventario_parcial (producto_id, cantidad_restante, codigo_referencia)
-                 VALUES ($1, $2, $3) RETURNING id`,
+                VALUES ($1, $2, $3) RETURNING id`,
               [item.producto_id, remanente, codigoRef]
             );
-
-            if (!item.datos_extra) item.datos_extra = {};
-            item.datos_extra.created_parcial_id = parcRes.rows[0].id;
+            datosExtraObj.created_parcial_id = parcRes.rows[0].id;
           } else {
             let stockARestar = item.cantidad;
             let remanente = 0;
@@ -206,19 +246,23 @@ export async function PUT(req: Request, { params }: { params: Params }) {
               )}`;
               const parcRes = await client.query(
                 `INSERT INTO inventario_parcial (producto_id, cantidad_restante, codigo_referencia)
-                       VALUES ($1, $2, $3) RETURNING id`,
+                  VALUES ($1, $2, $3) RETURNING id`,
                 [item.producto_id, remanente, codigoRef]
               );
-              if (!item.datos_extra) item.datos_extra = {};
-              item.datos_extra.created_parcial_id = parcRes.rows[0].id;
+              datosExtraObj.created_parcial_id = parcRes.rows[0].id;
             }
           }
         }
       }
 
-      const datosExtra = item.datos_extra
-        ? JSON.stringify(item.datos_extra)
-        : null;
+      if (prodDB.es_liquido) {
+        datosExtraObj.unidad_medida =
+          prodDB.unidad_medida || datosExtraObj.descripcion_unidad;
+        datosExtraObj.es_liquido = true;
+      }
+
+      const datosExtraJson = JSON.stringify(datosExtraObj);
+
       await client.query(
         `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal, datos_extra)
          VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -228,7 +272,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
           item.cantidad,
           item.precio,
           item.cantidad * item.precio,
-          datosExtra,
+          datosExtraJson,
         ]
       );
     }
@@ -250,14 +294,17 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   try {
     const body = await request.json();
     const { estado } = body;
+
     if (!estado)
       return NextResponse.json({ error: "Estado requerido" }, { status: 400 });
 
     await client.query("BEGIN");
+
     const res = await client.query(
       "UPDATE ventas SET estado = $1 WHERE id = $2 RETURNING *",
       [estado, id]
     );
+
     if (res.rowCount === 0) throw new Error("Venta no encontrada");
 
     await client.query("COMMIT");

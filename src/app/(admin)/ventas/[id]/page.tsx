@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, User, UserCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  User,
+  UserCircle,
+  ShieldCheck,
+  Box,
+  Droplets,
+} from "lucide-react";
 import { formatoQuetzal, formatUnit } from "@/lib/utils";
 import ExportActions from "@/components/ventas/export/ExportActions";
 import styles from "./ventaDetalle.module.css";
@@ -31,6 +39,13 @@ export default function VentaDetallePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getVencimientoGarantia = (fechaVenta: string, meses: number) => {
+    if (!meses || meses <= 0) return null;
+    const fecha = new Date(fechaVenta);
+    fecha.setMonth(fecha.getMonth() + meses);
+    return fecha.toLocaleDateString();
   };
 
   if (loading)
@@ -119,54 +134,113 @@ export default function VentaDetallePage() {
             </tr>
           </thead>
           <tbody>
-            {venta.detalles?.map((item: any, i: number) => (
-              <tr key={i} className={styles.tableRow}>
-                <td className={styles.tableCell}>
-                  <strong>{item.cantidad}</strong>
-                  <span
-                    style={{
-                      fontSize: "0.85em",
-                      color: "#64748b",
-                      marginLeft: 4,
-                    }}
-                  >
-                    {item.datos_extra?.es_liquido
-                      ? formatUnit(
-                          item.datos_extra.unidad_medida ||
-                            item.datos_extra.descripcion_unidad
-                        )
-                      : item.datos_extra?.unidad_medida
-                      ? formatUnit(item.datos_extra.unidad_medida)
-                      : ""}
-                  </span>
-                </td>
-                <td className={styles.tableCell}>
-                  <div>{item.producto_nombre}</div>
-                  {item.datos_extra?.codigo_bateria && (
-                    <div className={styles.secondaryText}>
-                      Serie: {item.datos_extra.codigo_bateria}
+            {venta.detalles?.map((item: any, i: number) => {
+              const extra = item.datos_extra || {};
+
+              const serial = extra.numero_serie || extra.codigo_bateria;
+
+              const mesesGarantia = extra.garantia_meses || 0;
+              const fechaVence = getVencimientoGarantia(
+                venta.fecha_venta,
+                mesesGarantia
+              );
+
+              const unidad = extra.unidad_medida;
+
+              return (
+                <tr key={i} className={styles.tableRow}>
+                  <td className={styles.tableCell}>
+                    <strong>{item.cantidad}</strong>
+                    {unidad && (
+                      <div
+                        style={{
+                          fontSize: "0.75em",
+                          color: "#64748b",
+                          display: "flex",
+                          alignItems: "center",
+                          marginTop: 2,
+                        }}
+                      >
+                        <Droplets size={10} style={{ marginRight: 2 }} />
+                        {formatUnit(unidad)}
+                      </div>
+                    )}
+                  </td>
+                  <td className={styles.tableCell}>
+                    <div style={{ fontWeight: 500 }}>
+                      {item.producto_nombre}
                     </div>
-                  )}
-                  {item.datos_extra?.es_item_parcial && (
+
                     <div
-                      className={styles.secondaryText}
-                      style={{ color: "var(--color-primary)" }}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                        marginTop: 4,
+                      }}
                     >
-                      (Granel)
+                      {serial && (
+                        <div
+                          className={styles.secondaryText}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            color: "#ea580c",
+                          }}
+                        >
+                          <Box size={12} style={{ marginRight: 4 }} />
+                          <span
+                            style={{ fontFamily: "monospace", fontWeight: 600 }}
+                          >
+                            SN: {serial}
+                          </span>
+                        </div>
+                      )}
+
+                      {mesesGarantia > 0 && (
+                        <div
+                          className={styles.secondaryText}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            color: "#16a34a",
+                          }}
+                        >
+                          <ShieldCheck size={12} style={{ marginRight: 4 }} />
+                          <span>
+                            Garantía {mesesGarantia} meses (Vence: {fechaVence})
+                          </span>
+                        </div>
+                      )}
+
+                      {extra.es_item_parcial && (
+                        <span
+                          style={{
+                            fontSize: "0.75em",
+                            color: "#64748b",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          (Venta a granel)
+                        </span>
+                      )}
                     </div>
-                  )}
-                </td>
-                <td className={styles.tableCell} style={{ textAlign: "right" }}>
-                  {formatoQuetzal.format(item.precio_unitario)}
-                </td>
-                <td
-                  className={styles.tableCell}
-                  style={{ textAlign: "right", fontWeight: "bold" }}
-                >
-                  {formatoQuetzal.format(item.subtotal)}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td
+                    className={styles.tableCell}
+                    style={{ textAlign: "right" }}
+                  >
+                    {formatoQuetzal.format(item.precio_unitario)}
+                  </td>
+                  <td
+                    className={styles.tableCell}
+                    style={{ textAlign: "right", fontWeight: "bold" }}
+                  >
+                    {formatoQuetzal.format(item.subtotal)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

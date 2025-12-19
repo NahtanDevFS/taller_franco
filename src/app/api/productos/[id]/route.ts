@@ -39,13 +39,28 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       marca_id,
       nueva_marca_nombre,
       categoria_id,
+      permite_fraccion,
+      requiere_serial,
+      tiene_garantia,
+      atributos,
+      //legacy
       es_bateria,
       es_liquido,
       capacidad,
       unidad_medida,
     } = body;
 
-    //limpieza de datos
+    const finalFraccion = permite_fraccion ?? es_liquido ?? false;
+    const finalGarantia = tiene_garantia ?? es_bateria ?? false;
+    const finalSerial = requiere_serial ?? false;
+
+    let finalAtributos = atributos || {};
+    if (!atributos) {
+      if (capacidad !== undefined)
+        finalAtributos.capacidad = parseFloat(capacidad);
+      if (unidad_medida) finalAtributos.unidad_medida = unidad_medida;
+    }
+
     const finalCodigo =
       codigo_barras && codigo_barras.trim() !== "" ? codigo_barras : null;
     const finalCategoriaId =
@@ -74,17 +89,9 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     const sql = `
       UPDATE productos 
       SET 
-        nombre = $1, 
-        codigo_barras = $2, 
-        precio = $3, 
-        stock = $4, 
-        stock_minimo = $5, 
-        marca_id = $6, 
-        categoria_id = $7,
-        es_bateria = $8,
-        es_liquido = $9,
-        capacidad = $10,
-        unidad_medida = $11
+        nombre = $1, codigo_barras = $2, precio = $3, stock = $4, stock_minimo = $5, 
+        marca_id = $6, categoria_id = $7, 
+        permite_fraccion = $8, requiere_serial = $9, tiene_garantia = $10, atributos = $11
       WHERE id = $12
       RETURNING *
     `;
@@ -97,10 +104,10 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       stock_minimo,
       finalMarcaId,
       finalCategoriaId,
-      es_bateria || false,
-      es_liquido || false,
-      capacidad || 1,
-      unidad_medida || "Litros",
+      finalFraccion,
+      finalSerial,
+      finalGarantia,
+      JSON.stringify(finalAtributos),
       id,
     ]);
 

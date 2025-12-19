@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { FileText, Printer, Sheet, Loader2 } from "lucide-react";
 import { InvoiceDocument } from "./InvoiceDocument";
 import { toast } from "sonner";
+import { formatUnit } from "@/lib/utils";
 
 interface ExportActionsProps {
   venta: any;
@@ -18,18 +19,27 @@ export default function ExportActions({ venta }: ExportActionsProps) {
 
   const exportToExcel = () => {
     try {
-      const rows = venta.detalles.map((d: any) => ({
-        ID_Venta: venta.id,
-        Fecha: new Date(venta.fecha_venta).toLocaleDateString(),
-        Cliente: venta.cliente,
-        Producto: d.producto_nombre,
-        Codigo: d.codigo_barras || d.datos_extra?.codigo_bateria || "-",
-        Cantidad: d.cantidad,
-        Precio_Unit: parseFloat(d.precio_unitario),
-        Subtotal: parseFloat(d.subtotal),
-        Vendedor: venta.vendedor_nombre,
-        Estado: venta.estado,
-      }));
+      const rows = venta.detalles.map((d: any) => {
+        const extra = d.datos_extra || {};
+        const serial = extra.numero_serie || extra.codigo_bateria || "-";
+
+        return {
+          ID_Venta: venta.id,
+          Fecha: new Date(venta.fecha_venta).toLocaleDateString(),
+          Cliente: venta.cliente,
+          Producto: d.producto_nombre,
+          Codigo_Serie: serial !== "-" ? serial : d.codigo_barras || "-",
+          Cantidad: d.cantidad,
+          Unidad: extra.unidad_medida ? formatUnit(extra.unidad_medida) : "Ud",
+          Precio_Unit: parseFloat(d.precio_unitario),
+          Subtotal: parseFloat(d.subtotal),
+          Garantia: extra.garantia_meses
+            ? `${extra.garantia_meses} Meses`
+            : "No",
+          Vendedor: venta.vendedor_nombre,
+          Estado: venta.estado,
+        };
+      });
 
       const worksheet = XLSX.utils.json_to_sheet(rows);
       const workbook = XLSX.utils.book_new();
@@ -42,9 +52,9 @@ export default function ExportActions({ venta }: ExportActionsProps) {
     }
   };
 
-  //generar y descargar PDF bajo demanda
+  //genera y descargar PDF bajo demanda
   const handleDownloadPDF = async (tipo: "ticket" | "carta") => {
-    if (loadingType) return; // Evitar doble clic
+    if (loadingType) return;
     setLoadingType(tipo);
 
     try {

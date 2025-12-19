@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontWeight: "bold",
   },
-  tableRow: { flexDirection: "row", marginBottom: 4 },
+  tableRow: { flexDirection: "row", marginBottom: 6 },
   colQty: { width: "10%", textAlign: "center" },
   colProd: { width: "65%", textAlign: "left", paddingRight: 5 },
   colTotal: { width: "25%", textAlign: "right" },
@@ -127,6 +127,13 @@ interface InvoiceProps {
   tipo: "ticket" | "carta";
 }
 
+const calcularVencimiento = (fechaVenta: string, meses: number) => {
+  if (!meses) return "";
+  const fecha = new Date(fechaVenta);
+  fecha.setMonth(fecha.getMonth() + meses);
+  return fecha.toLocaleDateString("es-GT");
+};
+
 export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
   const fecha = new Date(venta.fecha_venta).toLocaleString("es-GT");
   const subtotalReal =
@@ -138,7 +145,7 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
 
   if (tipo === "ticket") {
     const minHeight = 300;
-    const itemHeight = 30;
+    const itemHeight = 45;
     const calculatedHeight =
       minHeight + (venta.detalles?.length || 0) * itemHeight;
 
@@ -153,7 +160,6 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
             <Text style={{ fontSize: 9, marginTop: 4 }}>{fecha}</Text>
           </View>
 
-          {/*cliente ticket*/}
           <View style={styles.clientSection}>
             {venta.cliente === "CF" || !venta.cliente ? (
               <>
@@ -180,29 +186,43 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
               <Text style={styles.colProd}>Producto</Text>
               <Text style={styles.colTotal}>Total</Text>
             </View>
-            {venta.detalles?.map((item: any, i: number) => (
-              <View key={i} style={styles.tableRow}>
-                <Text style={styles.colQty}>
-                  {item.cantidad}{" "}
-                  {item.datos_extra?.unidad_medida
-                    ? formatUnit(item.datos_extra.unidad_medida)
-                    : item.datos_extra?.descripcion_unidad
-                    ? formatUnit(item.datos_extra.descripcion_unidad)
-                    : ""}
-                </Text>
-                <View style={styles.colProd}>
-                  <Text>{item.producto_nombre}</Text>
-                  {item.datos_extra?.codigo_bateria && (
-                    <Text style={{ fontSize: 7, color: "#666" }}>
-                      [Serie: {item.datos_extra.codigo_bateria}]
-                    </Text>
-                  )}
+            {venta.detalles?.map((item: any, i: number) => {
+              const extra = item.datos_extra || {};
+              const serial = extra.numero_serie || extra.codigo_bateria;
+              const garantia = extra.garantia_meses;
+              const vence = calcularVencimiento(venta.fecha_venta, garantia);
+
+              return (
+                <View key={i} style={styles.tableRow}>
+                  <Text style={styles.colQty}>
+                    {item.cantidad}{" "}
+                    {extra.unidad_medida
+                      ? formatUnit(extra.unidad_medida)
+                      : extra.descripcion_unidad
+                      ? formatUnit(extra.descripcion_unidad)
+                      : ""}
+                  </Text>
+                  <View style={styles.colProd}>
+                    <Text>{item.producto_nombre}</Text>
+
+                    {serial && (
+                      <Text style={{ fontSize: 7, color: "#444" }}>
+                        [SN: {serial}]
+                      </Text>
+                    )}
+
+                    {garantia > 0 && (
+                      <Text style={{ fontSize: 7, color: "#444" }}>
+                        Garantía: {garantia} meses (Vence: {vence})
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.colTotal}>
+                    {formatoQuetzal.format(item.subtotal)}
+                  </Text>
                 </View>
-                <Text style={styles.colTotal}>
-                  {formatoQuetzal.format(item.subtotal)}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
 
           <View style={styles.totalsSection}>
@@ -255,9 +275,6 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
           </View>
 
           <View style={styles.footer}>
-            {/*<Text style={{ marginBottom: 5 }}>
-              Vendedor: {venta.vendedor_nombre || "General"}
-            </Text>*/}
             <Text style={styles.disclaimer}>
               * Documento no válido para crédito fiscal *
             </Text>
@@ -288,9 +305,6 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
               ORDEN #{venta.id}
             </Text>
             <Text style={{ color: "#555" }}>{fecha}</Text>
-            {/*<Text style={{ marginTop: 5, fontSize: 10 }}>
-              Vendedor: {venta.vendedor_nombre || "Caja"}
-            </Text>*/}
           </View>
         </View>
 
@@ -325,28 +339,45 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
             <Text style={{ width: "15%", textAlign: "right" }}>Subtotal</Text>
           </View>
 
-          {venta.detalles?.map((item: any, i: number) => (
-            <View key={i} style={styles.letterTableRow}>
-              <Text style={{ width: "10%", textAlign: "center" }}>
-                {item.cantidad}{" "}
-                {item.datos_extra?.unidad_medida
-                  ? formatUnit(item.datos_extra.unidad_medida)
-                  : ""}
-              </Text>
-              <Text style={{ width: "60%" }}>
-                {item.producto_nombre}
-                {item.datos_extra?.codigo_bateria
-                  ? `  (Serie: ${item.datos_extra.codigo_bateria})`
-                  : ""}
-              </Text>
-              <Text style={{ width: "15%", textAlign: "right" }}>
-                {formatoQuetzal.format(item.precio_unitario)}
-              </Text>
-              <Text style={{ width: "15%", textAlign: "right" }}>
-                {formatoQuetzal.format(item.subtotal)}
-              </Text>
-            </View>
-          ))}
+          {venta.detalles?.map((item: any, i: number) => {
+            const extra = item.datos_extra || {};
+            const serial = extra.numero_serie || extra.codigo_bateria;
+            const garantia = extra.garantia_meses;
+            const vence = calcularVencimiento(venta.fecha_venta, garantia);
+
+            return (
+              <View key={i} style={styles.letterTableRow}>
+                <Text style={{ width: "10%", textAlign: "center" }}>
+                  {item.cantidad}{" "}
+                  {extra.unidad_medida ? formatUnit(extra.unidad_medida) : ""}
+                </Text>
+                <View style={{ width: "60%" }}>
+                  <Text>{item.producto_nombre}</Text>
+
+                  {(serial || garantia > 0) && (
+                    <View style={{ marginTop: 2, paddingLeft: 5 }}>
+                      {serial && (
+                        <Text style={{ fontSize: 9, color: "#555" }}>
+                          • SN: {serial}
+                        </Text>
+                      )}
+                      {garantia > 0 && (
+                        <Text style={{ fontSize: 9, color: "#555" }}>
+                          • Garantía: {garantia} meses (Expira: {vence})
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+                <Text style={{ width: "15%", textAlign: "right" }}>
+                  {formatoQuetzal.format(item.precio_unitario)}
+                </Text>
+                <Text style={{ width: "15%", textAlign: "right" }}>
+                  {formatoQuetzal.format(item.subtotal)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         <View style={{ alignItems: "flex-end" }}>

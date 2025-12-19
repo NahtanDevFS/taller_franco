@@ -20,7 +20,6 @@ export default function HistorialVentasPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  //filtros
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showAnuladas, setShowAnuladas] = useState(false);
@@ -91,19 +90,20 @@ export default function HistorialVentasPage() {
   };
 
   const handleAnular = async (id: number) => {
-    if (
-      !confirm("¿Seguro que deseas anular esta venta? El stock será devuelto.")
-    )
-      return;
+    if (!confirm("¿Seguro que deseas anular esta venta?")) return;
 
     toast.promise(
-      fetch(`/api/ventas/${id}`, { method: "DELETE" }).then(() =>
-        fetchVentas()
-      ),
+      fetch(`/api/ventas/${id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Error al anular");
+        }
+        return fetchVentas();
+      }),
       {
         loading: "Anulando venta...",
         success: "Venta anulada correctamente",
-        error: "Error al anular venta",
+        error: (err) => `Error: ${err.message}`,
       }
     );
   };
@@ -302,7 +302,6 @@ export default function HistorialVentasPage() {
         </table>
       </div>
 
-      {/*paginacion*/}
       <div
         style={{
           marginTop: 20,
