@@ -103,7 +103,9 @@ export async function POST(request: Request) {
 
     for (const item of items) {
       const prodRes = await client.query(
-        "SELECT stock, tipo, nombre, es_liquido, capacidad, unidad_medida, requiere_serial FROM productos WHERE id = $1",
+        `SELECT stock, tipo, nombre, 
+                permite_fraccion, atributos, requiere_serial 
+         FROM productos WHERE id = $1`,
         [item.producto_id]
       );
 
@@ -112,6 +114,12 @@ export async function POST(request: Request) {
       }
 
       const productoDB = prodRes.rows[0];
+      const prodAttrs = productoDB.atributos || {};
+
+      const esLiquido = productoDB.permite_fraccion;
+      const capacidad = parseFloat(prodAttrs.capacidad || 1);
+      const unidadMedida = prodAttrs.unidad_medida || "Unidades";
+
       const datosExtraObj = item.datos_extra || {};
       let createdParcialId = null;
 
@@ -170,12 +178,10 @@ export async function POST(request: Request) {
           let stockARestar = item.cantidad;
           let remanente = 0;
 
-          if (productoDB.es_liquido && productoDB.capacidad > 0) {
-            const botellasNecesarias = Math.ceil(
-              item.cantidad / productoDB.capacidad
-            );
+          if (esLiquido && capacidad > 0) {
+            const botellasNecesarias = Math.ceil(item.cantidad / capacidad);
             stockARestar = botellasNecesarias;
-            const totalLiquido = botellasNecesarias * productoDB.capacidad;
+            const totalLiquido = botellasNecesarias * capacidad;
             remanente = totalLiquido - item.cantidad;
           }
 
@@ -202,9 +208,9 @@ export async function POST(request: Request) {
         datosExtraObj.created_parcial_id = createdParcialId;
       }
 
-      if (productoDB.es_liquido) {
+      if (esLiquido) {
         datosExtraObj.unidad_medida =
-          productoDB.unidad_medida || datosExtraObj.descripcion_unidad;
+          unidadMedida || datosExtraObj.descripcion_unidad;
         datosExtraObj.es_liquido = true;
       }
 
