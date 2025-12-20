@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(request.url);
 
   if (searchParams.get("type") === "all_batteries") {
@@ -201,6 +208,13 @@ interface ProductBody {
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const client = await pool.connect();
 
   try {

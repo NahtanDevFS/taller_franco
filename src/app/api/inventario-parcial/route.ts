@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const sql = `
       SELECT 
@@ -28,6 +37,14 @@ export async function GET() {
 
 //PATCH para borrado lógico
 export async function PATCH(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const client = await pool.connect();
   try {
     const { id } = await request.json();

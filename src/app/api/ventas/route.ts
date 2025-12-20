@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { pool, query } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 //GET para el historial de ventas paginado
 export async function GET(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get("page") || "1");
   const limit = 20;
@@ -66,6 +74,13 @@ export async function GET(request: Request) {
 
 //POST para registrar una nueva venta
 export async function POST(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const client = await pool.connect();
   try {
     const body = await request.json();

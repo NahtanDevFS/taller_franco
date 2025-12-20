@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ id: string }>;
 
 //GET
 export async function GET(request: Request, { params }: { params: Params }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const { id } = await params;
 
@@ -39,6 +47,13 @@ export async function GET(request: Request, { params }: { params: Params }) {
 
 //PUT
 export async function PUT(request: Request, { params }: { params: Params }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const client = await pool.connect();
 
   try {
@@ -128,6 +143,13 @@ export async function PUT(request: Request, { params }: { params: Params }) {
 
 //DELETE
 export async function DELETE(request: Request, { params }: { params: Params }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const { id } = await params;
     //si el producto ya tiene ventas asociadas, esto fallará por la foreign key, para mantener la integridad de los datos históricos

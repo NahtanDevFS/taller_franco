@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ id: string }>;
 
@@ -62,6 +63,13 @@ async function restaurarStock(client: any, ventaId: string) {
 
 //GET para obtener detalle de la venta
 export async function GET(req: Request, { params }: { params: Params }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   try {
     const ventaRes = await pool.query(
@@ -105,6 +113,13 @@ export async function GET(req: Request, { params }: { params: Params }) {
 
 //DELETE para anular una venta (eliminación lógica)
 export async function DELETE(req: Request, { params }: { params: Params }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const client = await pool.connect();
   const { id } = await params;
 
@@ -140,6 +155,13 @@ export async function DELETE(req: Request, { params }: { params: Params }) {
 
 //PUT para editar una venta considerando la correcta actualización respecto al inventario de productos
 export async function PUT(req: Request, { params }: { params: Params }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const client = await pool.connect();
   const { id } = await params;
 
@@ -297,6 +319,13 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
 //PATCH para cuando se modifica el estado de una venta
 export async function PATCH(request: Request, { params }: { params: Params }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const client = await pool.connect();
   try {

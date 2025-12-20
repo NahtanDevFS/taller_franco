@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 //GET para listar seriales con datos de venta
 export async function GET(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("q") || "";
 
@@ -45,6 +54,14 @@ export async function GET(request: Request) {
 
 //PATCH para acciones de modificación (eliminar o dar de baja)
 export async function PATCH(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { id, action } = body;
