@@ -16,7 +16,7 @@
 
 .searchSection {
   background: white;
-  padding: 20px;
+  padding: 15px;
   border-radius: var(--border-radius);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   display: flex;
@@ -24,45 +24,50 @@
 }
 
 .searchSection p {
-  margin: 5px;
+  margin: 0 0 10px 0;
+  font-size: 0.9rem;
+  color: #64748b;
 }
 
 .searchSectionItems {
   background: white;
   border-radius: var(--border-radius);
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .searchInput {
   flex: 1;
-  padding: 15px;
-  font-size: 1.1rem;
-  border: 2px solid #e2e8f0;
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: 1px solid #e2e8f0;
   border-radius: var(--border-radius);
 }
 
 .searchInput:focus {
   outline: none;
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.1);
 }
 
 .resultsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding-bottom: 20px;
 }
 
 .productCard {
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: var(--border-radius);
-  padding: 15px;
+  border-radius: 12px;
+  padding: 12px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  height: 100%;
 }
 
 .productCard:hover {
@@ -72,17 +77,18 @@
 }
 
 .cardTitle {
-  font-weight: bold;
-  font-size: 1rem;
-  margin-bottom: 5px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
   color: var(--color-secondary);
+  line-height: 1.3;
 }
 
 .cardPrice {
-  font-size: 1.2rem;
-  font-weight: bold;
+  font-size: 1.1rem;
+  font-weight: 700;
   color: var(--color-primary);
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .rightPanel {
@@ -92,52 +98,110 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
 
 .cartHeader {
-  padding: 20px;
+  padding: 15px;
   background: var(--color-secondary);
   color: white;
   border-radius: var(--border-radius) var(--border-radius) 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cartHeader h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.cartHeader small {
+  font-size: 0.85rem;
+}
+
+.clientInputContainer {
+  padding: 10px 15px;
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.clientInput {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.clientInput:focus {
+  background-color: #fff;
+  border-color: var(--color-primary);
+  outline: none;
 }
 
 .cartItems {
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
+  padding: 0 15px;
 }
 
 .cartItem {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .itemInfo {
   flex: 1;
+  padding-right: 10px;
+}
+
+.itemInfo div:first-child {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #334155;
+  line-height: 1.2;
+}
+
+.itemInfo small {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  display: block;
+  margin-top: 2px;
 }
 
 .qtyControl {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 5px;
+  gap: 5px;
+  margin-top: 6px;
 }
 
 .qtyBtn {
   background: #f1f5f9;
-  border: none;
-  width: 25px;
-  height: 25px;
-  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  transition: all 0.1s;
+}
+
+.qtyBtn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 .cartFooter {
-  padding: 20px;
+  padding: 15px;
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
 }
@@ -145,21 +209,31 @@
 .totalRow {
   display: flex;
   justify-content: space-between;
-  font-size: 1.2rem;
-  margin-bottom: 20px;
-  font-weight: bold;
+  align-items: center;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  color: #0f172a;
 }
 
 .payButton {
   width: 100%;
   background: var(--color-primary);
   color: white;
-  padding: 15px;
+  padding: 12px;
   border: none;
-  border-radius: var(--border-radius);
-  font-size: 1.1rem;
-  font-weight: bold;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: transform 0.1s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.payButton:active {
+  transform: scale(0.98);
 }
 
 .payButton:hover {
@@ -171,25 +245,28 @@
   cursor: not-allowed;
 }
 
-/*Modal batería*/
 .modalOverlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 2000;
+  padding: 20px;
 }
 
 .modalContent {
   background: white;
   padding: 25px;
-  border-radius: var(--border-radius);
-  width: 400px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .scanButton {
@@ -201,8 +278,7 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
-  transition: background-color 0.2s;
+  justify-content: center;
 }
 
 .scanButton:hover {
@@ -211,16 +287,16 @@
 
 .btnSecondary {
   width: 100%;
-  padding: 12px;
-  background-color: white;
-  border: 2px dashed var(--color-primary);
+  padding: 10px;
+  background-color: transparent;
+  border: 1px dashed var(--color-primary);
   color: var(--color-primary);
-  border-radius: var(--border-radius);
-  font-weight: bold;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 10px;
-  margin-bottom: 20px;
+  margin-top: 5px;
+  margin-bottom: 15px;
 }
 
 .btnSecondary:hover {
@@ -288,10 +364,13 @@
 
 .emptyState {
   text-align: center;
-  padding: 50px;
-  color: #aaa;
+  padding: 40px 20px;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
-
 .cartEmpty {
   text-align: center;
   color: #999;
@@ -321,16 +400,16 @@
 
 .backButton {
   background: white;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   color: #64748b;
-  transition: all 0.2s;
-  font-size: 0.9rem;
-  width: fit-content;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 10px;
 }
 
 .backButton:hover {
@@ -343,6 +422,7 @@
     grid-template-columns: 1fr;
     height: auto;
     overflow: visible;
+    padding-bottom: 0;
   }
   .rightPanel {
     position: fixed;
@@ -350,14 +430,15 @@
     left: 0;
     right: 0;
     height: auto;
-    max-height: 62vh;
+    max-height: 65vh;
     border-radius: 20px 20px 0 0;
     z-index: 100;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    border-top: 1px solid #e2e8f0;
   }
   .leftPanel {
     padding-right: 0px;
-    padding-bottom: 50vh;
+    padding-bottom: 70vh;
   }
   .searchInput {
     font-size: 0.9rem;
@@ -368,10 +449,18 @@
   }
 
   .cartHeader {
-    padding: 10px;
+    padding: 10px 15px;
   }
 
   .cartHeader h2 {
-    margin-bottom: 10px;
+    font-size: 1rem;
+  }
+
+  .clientInputContainer {
+    padding: 5px 15px;
+  }
+
+  .cartItems {
+    padding: 0 15px;
   }
 }
