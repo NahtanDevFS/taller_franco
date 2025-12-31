@@ -29,7 +29,15 @@ import {
 } from "lucide-react";
 import styles from "@/app/(admin)/dashboard/dashboard.module.css";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+const COLORS = [
+  "#0088FE",
+  "#00C49F",
+  "#FFBB28",
+  "#FF8042",
+  "#8884d8",
+  "#00a2b8ff",
+  "#00b83dff",
+];
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
