@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       const productoDB = prodRes.rows[0];
       const prodAttrs = productoDB.atributos || {};
 
-      const costoSnapshot = parseFloat(productoDB.costo) || 0;
+      let costoSnapshot = parseFloat(productoDB.costo) || 0;
 
       const esLiquido = productoDB.permite_fraccion;
       const capacidad = parseFloat(prodAttrs.capacidad || 1);
@@ -196,6 +196,7 @@ export async function POST(request: Request) {
           let remanente = 0;
 
           if (esLiquido && capacidad > 0) {
+            costoSnapshot = costoSnapshot / capacidad;
             const botellasNecesarias = Math.ceil(item.cantidad / capacidad);
             stockARestar = botellasNecesarias;
             const totalLiquido = botellasNecesarias * capacidad;

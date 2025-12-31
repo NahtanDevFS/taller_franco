@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import styles from "./productos.module.css";
 import { formatoQuetzal } from "@/lib/utils";
 import { Toaster, toast } from "sonner";
-import { Search, X, Edit, Trash2 } from "lucide-react";
+import { Search, X, Edit, Trash2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 export default function ProductosPage() {
@@ -17,12 +17,15 @@ export default function ProductosPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const [lowStockOnly, setLowStockOnly] = useState(false);
+
   const fetchProductos = useCallback(async () => {
     const params = new URLSearchParams({
       page: page.toString(),
       q: searchTerm,
       cat: filterCategoria,
       marca: filterMarca,
+      lowStock: lowStockOnly.toString(),
     });
     const res = await fetch(`/api/productos?${params}`);
     const data = await res.json();
@@ -30,7 +33,7 @@ export default function ProductosPage() {
       setProductos(data.data);
       setTotalPages(data.totalPages);
     }
-  }, [page, searchTerm, filterCategoria, filterMarca]);
+  }, [page, searchTerm, filterCategoria, filterMarca, lowStockOnly]);
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -75,6 +78,7 @@ export default function ProductosPage() {
     setSearchTerm("");
     setFilterCategoria("");
     setFilterMarca("");
+    setLowStockOnly(false);
     setPage(1);
   };
 
@@ -133,6 +137,35 @@ export default function ProductosPage() {
             </option>
           ))}
         </select>
+        <label
+          className={styles.checkboxLabel}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: "0.9rem",
+            cursor: "pointer",
+            userSelect: "none",
+            color: lowStockOnly ? "#ef4444" : "#64748b",
+            fontWeight: lowStockOnly ? 600 : 400,
+            border: `1px solid ${lowStockOnly ? "#ef4444" : "#e2e8f0"}`,
+            padding: "6px 12px",
+            borderRadius: 6,
+            background: lowStockOnly ? "#fef2f2" : "white",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={lowStockOnly}
+            onChange={(e) => {
+              setLowStockOnly(e.target.checked);
+              setPage(1);
+            }}
+            style={{ accentColor: "#ef4444" }}
+          />
+          <AlertTriangle size={16} />
+          Bajo stock
+        </label>
         {(searchTerm || filterCategoria || filterMarca) && (
           <button onClick={clearFilters} className={styles.clearBtn}>
             <X size={18} />

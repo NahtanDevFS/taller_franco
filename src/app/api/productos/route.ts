@@ -32,6 +32,7 @@ export async function GET(request: Request) {
   const search = searchParams.get("q") || "";
   const categoriaId = searchParams.get("cat") || "";
   const marcaId = searchParams.get("marca") || "";
+  const lowStock = searchParams.get("lowStock") === "true";
   const limit = 20;
   const offset = (page - 1) * limit;
 
@@ -100,6 +101,10 @@ export async function GET(request: Request) {
 
     const allValues = [...queryParams, ...queryParams, limit, offset];
 
+    const outerWhere = lowStock
+      ? "WHERE unificados.stock <= unificados.stock_minimo"
+      : "";
+
     const mainSql = `
       SELECT * FROM (
         SELECT 
@@ -138,6 +143,7 @@ export async function GET(request: Request) {
         AND ip.cantidad_restante > 0
         ${wherePartials}
       ) AS unificados
+       ${outerWhere}
       ORDER BY fecha_orden DESC
       LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
     `;
@@ -154,13 +160,20 @@ export async function GET(request: Request) {
       () => `$${countParamCounter++}`
     );
 
+    const lowStockCondProd = lowStock
+      ? `AND (${dynamicStockLogic}) <= p.stock_minimo`
+      : "";
+    const lowStockCondPart = lowStock
+      ? `AND ip.cantidad_restante <= p.stock_minimo`
+      : "";
+
     const countSql = `
       SELECT COUNT(*) as total FROM (
         SELECT p.id FROM productos p WHERE p.tipo = 'producto' ${countWhereProd}
         UNION ALL
         SELECT ip.id FROM inventario_parcial ip 
         JOIN productos p ON ip.producto_id = p.id 
-        WHERE ip.activo = true AND ip.cantidad_restante > 0 ${countWherePart}
+        WHERE ip.activo = true AND ip.cantidad_restante > 0 ${countWherePart} ${lowStockCondPart}
       ) as total_rows
     `;
 

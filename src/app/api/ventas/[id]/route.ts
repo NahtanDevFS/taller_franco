@@ -193,7 +193,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
       const prodDB = prodRes.rows[0];
       const prodAttrs = prodDB.atributos || {};
 
-      const costoSnapshot = parseFloat(prodDB.costo) || 0;
+      let costoSnapshot = parseFloat(prodDB.costo) || 0;
 
       const capacidad = parseFloat(prodAttrs.capacidad || 1);
       const unidadMedida = prodAttrs.unidad_medida || "Unidades";
@@ -262,6 +262,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
             let remanente = 0;
 
             if (esLiquido && capacidad > 0) {
+              costoSnapshot = costoSnapshot / capacidad;
               const botellas = Math.ceil(item.cantidad / capacidad);
               stockARestar = botellas;
               remanente = botellas * capacidad - item.cantidad;
