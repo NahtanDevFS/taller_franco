@@ -60,11 +60,54 @@
   margin: 25px 0;
 }
 
+.financialHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
 .sectionTitleSmall {
   font-size: 1rem;
   color: #64748b;
-  margin-bottom: 15px;
+  margin: 0;
   font-weight: 600;
+}
+
+.dateFilterContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fff;
+  padding: 0.25rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.dateLabel {
+  color: #64748b;
+  margin-right: 0.25rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.dateInput {
+  border: none;
+  outline: none;
+  color: #334155;
+  font-family: inherit;
+  cursor: pointer;
+  background: transparent;
+  font-size: 0.85rem;
+}
+
+.dateSeparator {
+  color: #cbd5e1;
+  margin: 0 0.25rem;
 }
 
 .financialGrid {
@@ -131,7 +174,6 @@
   color: #94a3b8;
 }
 
-/* --- ESTILOS TABLAS COMPACTAS --- */
 .compactTable {
   width: 100%;
   border-collapse: collapse;
@@ -159,12 +201,11 @@
   font-style: italic;
 }
 
-/* Ajuste para que las tablas tengan altura uniforme si se desea */
 .tableCard {
   background: white;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
-  padding: 0; /* Padding controlado internamente */
+  padding: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -265,25 +306,14 @@
   gap: 20px;
 }
 
-.tableCard {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  height: 100%;
-  width: 100%;
-}
-
-.tableHeader {
-  padding: 15px 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
 .fullWidthTable {
   grid-column: 1 / -1;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 @media (max-width: 480px) {
@@ -294,5 +324,31 @@
 
   .container {
     padding: 10px;
+  }
+
+  .financialHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .dateFilterContainer {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .dateSeparator {
+    display: none;
+  }
+
+  .calendarIcon {
+    display: none;
+  }
+
+  .filterGroup {
+    width: 100%;
+    justify-content: space-between;
   }
 }

@@ -45,7 +45,6 @@ export default function DashboardPage() {
     "operativo"
   );
 
-  //por defecto primer día del mes actual hasta hoy
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
       .toISOString()
@@ -112,66 +111,38 @@ export default function DashboardPage() {
       </div>
 
       <div className={styles.financialSection}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "1rem",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <h3 className={styles.sectionTitleSmall} style={{ margin: 0 }}>
-            Rentabilidad
-          </h3>
+        <div className={styles.financialHeader}>
+          <h3 className={styles.sectionTitleSmall}>Rentabilidad</h3>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              background: "#fff",
-              padding: "0.25rem 0.5rem",
-              borderRadius: "6px",
-              border: "1px solid #e2e8f0",
-              fontSize: "0.875rem",
-            }}
-          >
-            <Calendar size={14} color="#64748b" />
-            <span style={{ color: "#64748b", marginRight: "0.25rem" }}>
-              Desde:
-            </span>
-            <input
-              type="date"
-              name="start"
-              value={dateRange.start}
-              onChange={handleDateChange}
-              style={{
-                border: "none",
-                outline: "none",
-                color: "#334155",
-                fontFamily: "inherit",
-                cursor: "pointer",
-              }}
-            />
-            <span style={{ color: "#cbd5e1" }}>|</span>
-            <span style={{ color: "#64748b", margin: "0 0.25rem" }}>
-              Hasta:
-            </span>
-            <input
-              type="date"
-              name="end"
-              value={dateRange.end}
-              onChange={handleDateChange}
-              style={{
-                border: "none",
-                outline: "none",
-                color: "#334155",
-                fontFamily: "inherit",
-                cursor: "pointer",
-              }}
-            />
+          <div className={styles.dateFilterContainer}>
+            <div className={styles.filterGroup}>
+              <Calendar
+                size={14}
+                color="#64748b"
+                className={styles.calendarIcon}
+              />
+              <span className={styles.dateLabel}>Desde:</span>
+              <input
+                type="date"
+                name="start"
+                value={dateRange.start}
+                onChange={handleDateChange}
+                className={styles.dateInput}
+              />
+            </div>
+
+            <span className={styles.dateSeparator}>|</span>
+
+            <div className={styles.filterGroup}>
+              <span className={styles.dateLabel}>Hasta:</span>
+              <input
+                type="date"
+                name="end"
+                value={dateRange.end}
+                onChange={handleDateChange}
+                className={styles.dateInput}
+              />
+            </div>
           </div>
         </div>
 
@@ -191,7 +162,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Costos */}
           <div className={styles.financialCard}>
             <div className={styles.finHeader}>
               <span className={styles.finLabel}>Costos</span>

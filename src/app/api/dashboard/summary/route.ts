@@ -118,7 +118,16 @@ export async function GET(request: Request) {
 
     //top 5 productos según rango de fechas
     const topProductosQuery = `
-      SELECT p.nombre, SUM(dv.cantidad) as cantidad_vendida
+      SELECT 
+        p.nombre, 
+        SUM(
+          CASE 
+            WHEN p.permite_fraccion = true AND COALESCE((p.atributos->>'capacidad')::numeric, 0) > 0 THEN 
+              dv.cantidad / (p.atributos->>'capacidad')::numeric
+            ELSE 
+              dv.cantidad 
+          END
+        ) as cantidad_vendida
       FROM detalle_ventas dv
       JOIN ventas v ON dv.venta_id = v.id
       JOIN productos p ON dv.producto_id = p.id
@@ -171,6 +180,13 @@ export async function GET(request: Request) {
       ingresos > 0 ? ((utilidadNeta / ingresos) * 100).toFixed(1) : "0";
     const ticketPromedio = cantidadVentas > 0 ? ingresos / cantidadVentas : 0;
 
+    const topProductosFormatted = topRes.rows.map((p) => ({
+      ...p,
+      cantidad_vendida: parseFloat(p.cantidad_vendida)
+        .toFixed(1)
+        .replace(/\.0$/, ""), //esto quita decimales si es entero
+    }));
+
     return NextResponse.json({
       ventasHoy: parseFloat(hoyRes.rows[0].total),
       inventarioTotal: parseFloat(invRes.rows[0].total),
@@ -184,7 +200,7 @@ export async function GET(request: Request) {
       totalDescuentos: descuentos,
 
       bajoStock: lowStockRes.rows,
-      topProductos: topRes.rows,
+      topProductos: topProductosFormatted,
       ventasPorCategoria: catRes.rows.map((r) => ({
         name: r.nombre || "Sin Categoría",
         value: parseFloat(r.total),
