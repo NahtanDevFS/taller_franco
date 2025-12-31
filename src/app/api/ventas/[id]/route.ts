@@ -230,6 +230,9 @@ export async function PUT(req: Request, { params }: { params: Params }) {
           );
         } else if (datosExtraObj.es_item_parcial && datosExtraObj.parcial_id) {
           const parcialId = datosExtraObj.parcial_id;
+          if (esLiquido && capacidad > 0) {
+            costoSnapshot = costoSnapshot / capacidad;
+          }
           await client.query(
             "UPDATE inventario_parcial SET cantidad_restante = cantidad_restante - $1 WHERE id = $2",
             [item.cantidad, parcialId]
@@ -243,6 +246,9 @@ export async function PUT(req: Request, { params }: { params: Params }) {
             throw new Error(`Sin stock de ${prodDB.nombre}`);
 
           if (esLiquido && item.cantidad < capacidad) {
+            if (capacidad > 0) {
+              costoSnapshot = costoSnapshot / capacidad;
+            }
             await client.query(
               "UPDATE productos SET stock = stock - 1 WHERE id = $1",
               [item.producto_id]
