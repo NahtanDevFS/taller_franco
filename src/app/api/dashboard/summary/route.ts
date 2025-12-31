@@ -21,9 +21,12 @@ export async function GET() {
       AND date_trunc('day', fecha_venta) = date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
     `;
 
-    //consulta para las ventas del mes actual
+    //consulta para las ventas, ticket promedio y descuentos del mes actual
     const ventasMesQuery = `
-      SELECT COALESCE(SUM(total), 0) as total 
+      SELECT 
+        COALESCE(SUM(total), 0) as total,
+        COALESCE(AVG(total), 0) as ticket_promedio,
+        COALESCE(SUM(descuento), 0) as total_descuentos
       FROM ventas 
       WHERE estado = 'completada' 
       AND date_trunc('month', fecha_venta) = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
@@ -93,20 +96,58 @@ export async function GET() {
       LIMIT 5
     `;
 
-    const [hoyRes, mesRes, invRes, lowStockRes, topRes] = await Promise.all([
-      pool.query(ventasHoyQuery),
-      pool.query(ventasMesQuery),
-      pool.query(inventarioQuery),
-      pool.query(bajoStockQuery),
-      pool.query(topProductosQuery),
-    ]);
+    //ventas por categoría del mes actual
+    const ventasPorCategoriaQuery = `
+      SELECT c.nombre, COALESCE(SUM(dv.subtotal), 0) as total
+      FROM detalle_ventas dv
+      JOIN ventas v ON dv.venta_id = v.id
+      JOIN productos p ON dv.producto_id = p.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      WHERE v.estado = 'completada'
+      AND date_trunc('month', v.fecha_venta) = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
+      GROUP BY c.nombre
+      ORDER BY total DESC
+    `;
+
+    //productos sin movimiento (hueso), es decir, con stock > 0 y sin ventas en los últimos 90 días
+    const productosSinMovimientoQuery = `
+      SELECT p.id, p.nombre, p.stock, m.nombre as marca, MAX(v.fecha_venta) as ultima_venta
+      FROM productos p
+      LEFT JOIN detalle_ventas dv ON p.id = dv.producto_id
+      LEFT JOIN ventas v ON dv.venta_id = v.id
+      LEFT JOIN marcas m ON p.marca_id = m.id
+      WHERE p.stock > 0 AND p.tipo = 'producto'
+      GROUP BY p.id, p.nombre, p.stock, m.nombre
+      HAVING MAX(v.fecha_venta) < NOW() - INTERVAL '90 days' 
+      OR MAX(v.fecha_venta) IS NULL
+      ORDER BY ultima_venta ASC NULLS FIRST
+      LIMIT 50
+    `;
+
+    const [hoyRes, mesRes, invRes, lowStockRes, topRes, catRes, huesoRes] =
+      await Promise.all([
+        pool.query(ventasHoyQuery),
+        pool.query(ventasMesQuery),
+        pool.query(inventarioQuery),
+        pool.query(bajoStockQuery),
+        pool.query(topProductosQuery),
+        pool.query(ventasPorCategoriaQuery),
+        pool.query(productosSinMovimientoQuery),
+      ]);
 
     return NextResponse.json({
       ventasHoy: parseFloat(hoyRes.rows[0].total),
       ventasMes: parseFloat(mesRes.rows[0].total),
+      ticketPromedio: parseFloat(mesRes.rows[0].ticket_promedio),
+      totalDescuentos: parseFloat(mesRes.rows[0].total_descuentos),
       inventarioTotal: parseFloat(invRes.rows[0].total),
       bajoStock: lowStockRes.rows,
       topProductos: topRes.rows,
+      ventasPorCategoria: catRes.rows.map((r) => ({
+        name: r.nombre || "Sin Categoría",
+        value: parseFloat(r.total),
+      })),
+      productosSinMovimiento: huesoRes.rows,
     });
   } catch (error: any) {
     console.error("Error dashboard summary:", error);
