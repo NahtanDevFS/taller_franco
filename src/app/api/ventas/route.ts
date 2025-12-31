@@ -140,6 +140,10 @@ export async function POST(request: Request) {
       const datosExtraObj = item.datos_extra || {};
       let createdParcialId = null;
 
+      if (datosExtraObj.costo_custom !== undefined) {
+        costoSnapshot = parseFloat(datosExtraObj.costo_custom);
+      }
+
       if (productoDB.requiere_serial) {
         const serialVendido = datosExtraObj.numero_serie;
 
@@ -196,7 +200,9 @@ export async function POST(request: Request) {
           let remanente = 0;
 
           if (esLiquido && capacidad > 0) {
-            costoSnapshot = costoSnapshot / capacidad;
+            if (datosExtraObj.costo_custom === undefined) {
+              costoSnapshot = costoSnapshot / capacidad;
+            }
             const botellasNecesarias = Math.ceil(item.cantidad / capacidad);
             stockARestar = botellasNecesarias;
             const totalLiquido = botellasNecesarias * capacidad;

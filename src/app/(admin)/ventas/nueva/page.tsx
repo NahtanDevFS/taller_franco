@@ -37,6 +37,7 @@ interface CartItem {
     descripcion_unidad?: string;
     numero_serie?: string;
     garantia_meses?: number;
+    costo_custom?: number;
     [key: string]: any;
   } | null;
 }
@@ -57,10 +58,13 @@ function POSContent() {
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+
   const [customItemData, setCustomItemData] = useState({
     tipo: "servicio",
     descripcion: "",
     precio: "",
+    precio_compra: "",
   });
 
   const [liquidModalOpen, setLiquidModalOpen] = useState(false);
@@ -500,6 +504,9 @@ function POSContent() {
       toast.error("Completa descripción y precio");
       return;
     }
+
+    setIsAddingCustom(true);
+
     const codigoBuscar =
       customItemData.tipo === "servicio" ? "GEN-SERV" : "GEN-EXT";
     try {
@@ -508,6 +515,20 @@ function POSContent() {
       );
       if (!res.ok) throw new Error("No se encontraron productos genéricos");
       const productoGenerico = await res.json();
+
+      const precioVenta = parseFloat(customItemData.precio);
+      let costo = 0;
+
+      // Si es producto externo, verificamos si hay precio de compra (costo)
+      if (customItemData.tipo === "tercero") {
+        if (customItemData.precio_compra) {
+          costo = parseFloat(customItemData.precio_compra);
+        } else {
+          // Si no se especifica, el costo es igual al precio de venta
+          costo = precioVenta;
+        }
+      }
+
       const itemParaCarrito = {
         ...productoGenerico,
         nombre: customItemData.descripcion.toUpperCase(),
@@ -517,13 +538,21 @@ function POSContent() {
         datos_extra: {
           descripcion_personalizada: customItemData.descripcion,
           es_item_libre: true,
+          costo_custom: costo,
         },
       };
       addToCartFinal(itemParaCarrito, itemParaCarrito.datos_extra);
       setCustomItemModalOpen(false);
-      setCustomItemData({ tipo: "servicio", descripcion: "", precio: "" });
+      setCustomItemData({
+        tipo: "servicio",
+        descripcion: "",
+        precio: "",
+        precio_compra: "",
+      });
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setIsAddingCustom(false);
     }
   };
 
@@ -931,6 +960,11 @@ function POSContent() {
                     onClick={() =>
                       setCustomItemData({ ...customItemData, tipo: "servicio" })
                     }
+                    disabled={isAddingCustom}
+                    style={{
+                      cursor: isAddingCustom ? "not-allowed" : "pointer",
+                      opacity: isAddingCustom ? 0.6 : 1,
+                    }}
                     className={`${styles.typeBtn} ${
                       customItemData.tipo === "servicio"
                         ? styles.typeBtnActiveSecondary
@@ -944,6 +978,11 @@ function POSContent() {
                     onClick={() =>
                       setCustomItemData({ ...customItemData, tipo: "tercero" })
                     }
+                    disabled={isAddingCustom}
+                    style={{
+                      cursor: isAddingCustom ? "not-allowed" : "pointer",
+                      opacity: isAddingCustom ? 0.6 : 1,
+                    }}
                     className={`${styles.typeBtn} ${
                       customItemData.tipo === "tercero"
                         ? styles.typeBtnActivePrimary
@@ -960,6 +999,7 @@ function POSContent() {
                   className={styles.searchInput}
                   placeholder="mano de obra o producto..."
                   value={customItemData.descripcion}
+                  disabled={isAddingCustom}
                   onChange={(e) =>
                     setCustomItemData({
                       ...customItemData,
@@ -970,12 +1010,13 @@ function POSContent() {
                 />
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label className={styles.label}>Precio (Q)</label>
+                <label className={styles.label}>Precio Venta (Q)</label>
                 <input
                   type="number"
                   className={styles.searchInput}
                   placeholder="0.00"
                   value={customItemData.precio}
+                  disabled={isAddingCustom}
                   onChange={(e) =>
                     setCustomItemData({
                       ...customItemData,
@@ -984,27 +1025,57 @@ function POSContent() {
                   }
                 />
               </div>
+
+              {customItemData.tipo === "tercero" && (
+                <div style={{ marginBottom: 20 }}>
+                  <label className={styles.label}>
+                    Precio Compra (Q) - <small>Opcional</small>
+                  </label>
+                  <input
+                    type="number"
+                    className={styles.searchInput}
+                    placeholder="Igual al de venta si se deja vacío"
+                    value={customItemData.precio_compra}
+                    disabled={isAddingCustom}
+                    onChange={(e) =>
+                      setCustomItemData({
+                        ...customItemData,
+                        precio_compra: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              )}
+
               <div
                 style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
               >
                 <button
                   onClick={() => setCustomItemModalOpen(false)}
+                  disabled={isAddingCustom}
                   style={{
                     padding: "10px 20px",
                     border: "1px solid #ccc",
                     background: "transparent",
                     borderRadius: 8,
-                    cursor: "pointer",
+                    cursor: isAddingCustom ? "not-allowed" : "pointer",
+                    opacity: isAddingCustom ? 0.6 : 1,
                   }}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={addCustomItem}
+                  disabled={isAddingCustom}
                   className={styles.payButton}
-                  style={{ width: "auto", padding: "10px 25px" }}
+                  style={{
+                    width: "auto",
+                    padding: "10px 25px",
+                    opacity: isAddingCustom ? 0.7 : 1,
+                    cursor: isAddingCustom ? "not-allowed" : "pointer",
+                  }}
                 >
-                  Agregar
+                  {isAddingCustom ? "Agregando..." : "Agregar"}
                 </button>
               </div>
             </div>

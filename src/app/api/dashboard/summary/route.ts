@@ -131,7 +131,7 @@ export async function GET(request: Request) {
       FROM detalle_ventas dv
       JOIN ventas v ON dv.venta_id = v.id
       JOIN productos p ON dv.producto_id = p.id
-      WHERE v.estado = 'completada'
+      WHERE v.estado = 'completada' AND p.tipo != 'servicio'
       AND v.fecha_venta >= $1 AND v.fecha_venta <= $2
       GROUP BY p.id, p.nombre
       ORDER BY cantidad_vendida DESC

@@ -202,6 +202,10 @@ export async function PUT(req: Request, { params }: { params: Params }) {
       let createdParcialId = null;
       let datosExtraObj = item.datos_extra || {};
 
+      if (datosExtraObj.costo_custom !== undefined) {
+        costoSnapshot = parseFloat(datosExtraObj.costo_custom);
+      }
+
       if (prodDB.tipo === "producto") {
         if (prodDB.requiere_serial) {
           const serial = datosExtraObj.numero_serie;
