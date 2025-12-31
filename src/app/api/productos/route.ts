@@ -69,7 +69,8 @@ export async function GET(request: Request) {
     `;
 
     const commonColumns = `
-      p.id, 
+      p.id,
+      p.costo, 
       p.stock_minimo, p.marca_id, p.categoria_id, p.tipo,
       p.permite_fraccion, 
       p.requiere_serial, 
@@ -172,6 +173,7 @@ export async function GET(request: Request) {
       ...p,
       stock: parseFloat(p.stock) || 0,
       precio: parseFloat(p.precio) || 0,
+      costo: parseFloat(p.costo) || 0,
       capacidad: parseFloat(p.capacidad),
     }));
 
@@ -191,6 +193,7 @@ interface ProductBody {
   nombre: string;
   codigo_barras?: string;
   precio: number | string;
+  costo?: number | string;
   stock: number | string;
   stock_minimo: number | string;
   marca_id?: string | number;
@@ -219,7 +222,6 @@ export async function POST(request: Request) {
 
   try {
     const body: ProductBody = await request.json();
-    console.log("Datos recibidos:", body);
 
     const productData = normalizeProductInput(body);
 
@@ -233,9 +235,9 @@ export async function POST(request: Request) {
 
     const insertSql = `
       INSERT INTO productos 
-      (nombre, codigo_barras, precio, stock, stock_minimo, marca_id, categoria_id, 
+      (nombre, codigo_barras, precio, costo, stock, stock_minimo, marca_id, categoria_id, 
        permite_fraccion, requiere_serial, tiene_garantia, atributos)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -243,6 +245,7 @@ export async function POST(request: Request) {
       productData.nombre,
       productData.codigo_barras,
       productData.precio,
+      productData.costo,
       productData.stock,
       productData.stock_minimo,
       finalMarcaId,
@@ -286,6 +289,7 @@ function normalizeProductInput(body: ProductBody) {
     nombre: body.nombre,
     codigo_barras: body.codigo_barras?.trim() ? body.codigo_barras : null,
     precio: body.precio,
+    costo: body.costo ? parseFloat(body.costo.toString()) : 0,
     stock: body.stock,
     stock_minimo: body.stock_minimo,
     categoria_id: body.categoria_id

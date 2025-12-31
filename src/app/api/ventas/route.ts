@@ -118,7 +118,7 @@ export async function POST(request: Request) {
 
     for (const item of items) {
       const prodRes = await client.query(
-        `SELECT stock, tipo, nombre, 
+        `SELECT stock, tipo, nombre, costo,
                 permite_fraccion, atributos, requiere_serial 
          FROM productos WHERE id = $1`,
         [item.producto_id]
@@ -130,6 +130,8 @@ export async function POST(request: Request) {
 
       const productoDB = prodRes.rows[0];
       const prodAttrs = productoDB.atributos || {};
+
+      const costoSnapshot = parseFloat(productoDB.costo) || 0;
 
       const esLiquido = productoDB.permite_fraccion;
       const capacidad = parseFloat(prodAttrs.capacidad || 1);
@@ -230,13 +232,14 @@ export async function POST(request: Request) {
       }
 
       await client.query(
-        `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal, datos_extra)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, costo_unitario, subtotal, datos_extra)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           ventaId,
           item.producto_id,
           item.cantidad,
           item.precio,
+          costoSnapshot,
           item.cantidad * item.precio,
           JSON.stringify(datosExtraObj),
         ]

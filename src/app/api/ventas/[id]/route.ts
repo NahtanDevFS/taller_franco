@@ -184,7 +184,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
     for (const item of items) {
       const prodRes = await client.query(
-        "SELECT stock, tipo, nombre, permite_fraccion, atributos, requiere_serial FROM productos WHERE id = $1",
+        "SELECT stock, tipo, nombre, costo, permite_fraccion, atributos, requiere_serial FROM productos WHERE id = $1",
         [item.producto_id]
       );
       if (prodRes.rows.length === 0)
@@ -192,6 +192,8 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 
       const prodDB = prodRes.rows[0];
       const prodAttrs = prodDB.atributos || {};
+
+      const costoSnapshot = parseFloat(prodDB.costo) || 0;
 
       const capacidad = parseFloat(prodAttrs.capacidad || 1);
       const unidadMedida = prodAttrs.unidad_medida || "Unidades";
@@ -294,13 +296,14 @@ export async function PUT(req: Request, { params }: { params: Params }) {
       const datosExtraJson = JSON.stringify(datosExtraObj);
 
       await client.query(
-        `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal, datos_extra)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, costo_unitario, subtotal, datos_extra)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           id,
           item.producto_id,
           item.cantidad,
           item.precio,
+          costoSnapshot,
           item.cantidad * item.precio,
           datosExtraJson,
         ]

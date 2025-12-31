@@ -18,7 +18,7 @@ export async function GET(request: Request, { params }: { params: Params }) {
 
     const sql = `
       SELECT 
-        id, codigo_barras, nombre, descripcion, precio, stock, stock_minimo,
+        id, codigo_barras, nombre, descripcion, precio, costo, stock, stock_minimo,
         categoria_id, marca_id, url_imagen, tipo, created_at, updated_at,
         permite_fraccion, requiere_serial, tiene_garantia, atributos,
         
@@ -63,6 +63,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       nombre,
       codigo_barras,
       precio,
+      costo,
       stock,
       stock_minimo,
       marca_id,
@@ -105,10 +106,10 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     const sql = `
       UPDATE productos 
       SET 
-        nombre = $1, codigo_barras = $2, precio = $3, stock = $4, stock_minimo = $5, 
-        marca_id = $6, categoria_id = $7, 
-        permite_fraccion = $8, requiere_serial = $9, tiene_garantia = $10, atributos = $11
-      WHERE id = $12
+        nombre = $1, codigo_barras = $2, precio = $3, costo = $4, stock = $5, stock_minimo = $6, 
+        marca_id = $7, categoria_id = $8, 
+        permite_fraccion = $9, requiere_serial = $10, tiene_garantia = $11, atributos = $12
+      WHERE id = $13
       RETURNING *
     `;
 
@@ -116,6 +117,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       nombre,
       finalCodigo,
       precio,
+      costo || 0,
       stock,
       stock_minimo,
       finalMarcaId,

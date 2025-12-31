@@ -10,6 +10,7 @@ export interface Producto {
   nombre: string;
   descripcion: string | null;
   precio: number;
+  costo: number;
   stock: number;
   stock_minimo: number;
   categoria_id: number | null;
@@ -19,11 +20,7 @@ export interface Producto {
   requiere_serial: boolean;
   tiene_garantia: boolean;
   atributos: Record<string, any>;
-  //es_bateria?: boolean;
-  //es_liquido?: boolean;
   tipo?: string;
-  //capacidad?: number;
-  //unidad_medida?: string;
   created_at: string;
 }
 
@@ -53,6 +50,7 @@ export interface DetalleVenta {
   producto_id: number;
   cantidad: number;
   precio_unitario: number;
+  costo_unitario: number;
   subtotal: number;
   datos_extra: any;
 }
