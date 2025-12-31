@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -10,6 +10,22 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { searchParams } = new URL(request.url);
+
+  const now = new Date();
+
+  const defaultStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1
+  ).toISOString();
+
+  const defaultEnd = new Date().toISOString();
+
+  const startDate = searchParams.get("startDate") || defaultStart;
+
+  const endDate = searchParams.get("endDate") || defaultEnd;
 
   try {
     //ventas de hoy
@@ -20,8 +36,8 @@ export async function GET() {
       AND date_trunc('day', fecha_venta) = date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
     `;
 
-    //finanzas del mes, ingresos, descuentos, costos, cantidad de ventas, calcula costo usando el histórico si existe (>0), sino usa el actual del producto
-    const finanzasMesQuery = `
+    //finanzas según el rango de fecha, ingresos, descuentos, costos, cantidad de ventas, calcula costo usando el histórico si existe (>0), sino usa el actual del producto
+    const finanzasQuery = `
       SELECT 
         COALESCE(SUM(v.total), 0) as ingresos_totales,
         COALESCE(SUM(v.descuento), 0) as total_descuentos,
@@ -34,10 +50,8 @@ export async function GET() {
           SUM(
             dv.cantidad * CASE 
               WHEN dv.costo_unitario > 0 THEN dv.costo_unitario 
-              
               WHEN p.permite_fraccion = true AND (p.atributos->>'capacidad')::numeric > 0 THEN 
                  p.costo / (p.atributos->>'capacidad')::numeric
-
               ELSE p.costo
             END
           ) as costo_total
@@ -46,7 +60,7 @@ export async function GET() {
         GROUP BY dv.venta_id
       ) as sub_costos ON v.id = sub_costos.venta_id
       WHERE v.estado = 'completada'
-      AND date_trunc('month', v.fecha_venta) = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
+      AND v.fecha_venta >= $1 AND v.fecha_venta <= $2
     `;
 
     //valor de inventario actual
@@ -66,7 +80,7 @@ export async function GET() {
       WHERE p.tipo = 'producto'
     `;
 
-    //ventas por categoría del mes actual
+    //ventas por categoría según rango de fechas
     const ventasPorCategoriaQuery = `
       SELECT c.nombre, COALESCE(SUM(dv.subtotal), 0) as total
       FROM detalle_ventas dv
@@ -74,7 +88,7 @@ export async function GET() {
       JOIN productos p ON dv.producto_id = p.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       WHERE v.estado = 'completada'
-      AND date_trunc('month', v.fecha_venta) = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
+      AND v.fecha_venta >= $1 AND v.fecha_venta <= $2
       GROUP BY c.nombre
       ORDER BY total DESC
     `;
@@ -102,14 +116,14 @@ export async function GET() {
       LIMIT 20
     `;
 
-    //top 5 productos
+    //top 5 productos según rango de fechas
     const topProductosQuery = `
       SELECT p.nombre, SUM(dv.cantidad) as cantidad_vendida
       FROM detalle_ventas dv
       JOIN ventas v ON dv.venta_id = v.id
       JOIN productos p ON dv.producto_id = p.id
       WHERE v.estado = 'completada'
-      AND date_trunc('month', v.fecha_venta) = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
+      AND v.fecha_venta >= $1 AND v.fecha_venta <= $2
       GROUP BY p.id, p.nombre
       ORDER BY cantidad_vendida DESC
       LIMIT 5
@@ -132,11 +146,11 @@ export async function GET() {
     const [hoyRes, finanzasRes, invRes, lowStockRes, topRes, catRes, huesoRes] =
       await Promise.all([
         pool.query(ventasHoyQuery),
-        pool.query(finanzasMesQuery),
+        pool.query(finanzasQuery, [startDate, endDate]),
         pool.query(inventarioQuery),
         pool.query(bajoStockQuery),
-        pool.query(topProductosQuery),
-        pool.query(ventasPorCategoriaQuery),
+        pool.query(topProductosQuery, [startDate, endDate]),
+        pool.query(ventasPorCategoriaQuery, [startDate, endDate]),
         pool.query(productosSinMovimientoQuery),
       ]);
 
@@ -146,7 +160,7 @@ export async function GET() {
     const descuentos = parseFloat(finanzas.total_descuentos);
     const cantidadVentas = parseInt(finanzas.cantidad_ventas || "0");
 
-    // Impuesto 5% pequeño contribuyente sobre el ingreso bruto
+    // Impuesto 5% pequeño contribuyente sobre el ingreso menos los costos
     const TASA_IMPUESTO = 0.05;
     const impuestosEstimados = (ingresos - costos) * TASA_IMPUESTO;
 

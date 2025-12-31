@@ -22,10 +22,9 @@ import {
   Archive,
   Activity,
   TrendingUp,
-  PieChart as PieIcon,
   Wallet,
   Scale,
-  TrendingDown,
+  Calendar,
 } from "lucide-react";
 import styles from "@/app/(admin)/dashboard/dashboard.module.css";
 
@@ -42,24 +41,47 @@ const COLORS = [
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
-  const [chartFilter, setChartFilter] = useState("week");
   const [bottomView, setBottomView] = useState<"operativo" | "estancado">(
     "operativo"
   );
 
+  //por defecto primer día del mes actual hasta hoy
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      .toISOString()
+      .split("T")[0],
+    end: new Date().toISOString().split("T")[0],
+  });
+
   useEffect(() => {
-    fetch("/api/dashboard/summary")
+    if (!dateRange.start || !dateRange.end) return;
+
+    const endDateFormatted = new Date(
+      dateRange.end + "T23:59:59"
+    ).toISOString();
+
+    const queryParams = new URLSearchParams({
+      startDate: dateRange.start,
+      endDate: endDateFormatted,
+    }).toString();
+
+    fetch(`/api/dashboard/summary?${queryParams}`)
       .then((res) => res.json())
       .then((data) => setStats(data))
       .catch((err) => console.error(err));
-  }, []);
 
-  useEffect(() => {
-    fetch(`/api/dashboard/chart?range=${chartFilter}`)
+    fetch(`/api/dashboard/chart?${queryParams}`)
       .then((res) => res.json())
       .then((data) => setChartData(data))
       .catch((err) => console.error(err));
-  }, [chartFilter]);
+  }, [dateRange]);
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDateRange((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
 
   if (!stats)
     return <div className={styles.container}>Cargando Dashboard...</div>;
@@ -68,7 +90,6 @@ export default function DashboardPage() {
     <div className={styles.container}>
       <h1 className={styles.title}>Dashboard General</h1>
 
-      {/* 1. SECCIÓN OPERATIVA (Resumen Rápido) */}
       <div className={styles.kpiGrid}>
         <KpiCard
           title="Ventas de hoy"
@@ -83,18 +104,78 @@ export default function DashboardPage() {
           color="#3b82f6"
         />
         <KpiCard
-          title="Ticket Promedio (Mes)"
+          title="Ticket Promedio (periodo)"
           value={formatoQuetzal.format(stats.ticketPromedio)}
           icon={<Receipt size={24} color="white" />}
           color="#8b5cf6"
         />
       </div>
 
-      {/* 2. SECCIÓN FINANCIERA (Compacta y Separada) */}
       <div className={styles.financialSection}>
-        <h3 className={styles.sectionTitleSmall}>Rentabilidad (Mes Actual)</h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1rem",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
+          <h3 className={styles.sectionTitleSmall} style={{ margin: 0 }}>
+            Rentabilidad
+          </h3>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              background: "#fff",
+              padding: "0.25rem 0.5rem",
+              borderRadius: "6px",
+              border: "1px solid #e2e8f0",
+              fontSize: "0.875rem",
+            }}
+          >
+            <Calendar size={14} color="#64748b" />
+            <span style={{ color: "#64748b", marginRight: "0.25rem" }}>
+              Desde:
+            </span>
+            <input
+              type="date"
+              name="start"
+              value={dateRange.start}
+              onChange={handleDateChange}
+              style={{
+                border: "none",
+                outline: "none",
+                color: "#334155",
+                fontFamily: "inherit",
+                cursor: "pointer",
+              }}
+            />
+            <span style={{ color: "#cbd5e1" }}>|</span>
+            <span style={{ color: "#64748b", margin: "0 0.25rem" }}>
+              Hasta:
+            </span>
+            <input
+              type="date"
+              name="end"
+              value={dateRange.end}
+              onChange={handleDateChange}
+              style={{
+                border: "none",
+                outline: "none",
+                color: "#334155",
+                fontFamily: "inherit",
+                cursor: "pointer",
+              }}
+            />
+          </div>
+        </div>
+
         <div className={styles.financialGrid}>
-          {/* Ingresos */}
           <div className={styles.financialCard}>
             <div className={styles.finHeader}>
               <span className={styles.finLabel}>Ingresos</span>
@@ -113,7 +194,7 @@ export default function DashboardPage() {
           {/* Costos */}
           <div className={styles.financialCard}>
             <div className={styles.finHeader}>
-              <span className={styles.finLabel}>Costos (Cogs)</span>
+              <span className={styles.finLabel}>Costos</span>
               <div className={styles.iconBox} style={{ background: "#fee2e2" }}>
                 <Wallet size={16} color="#dc2626" />
               </div>
@@ -124,7 +205,6 @@ export default function DashboardPage() {
             <div className={styles.finSubtext}>Costo mercadería</div>
           </div>
 
-          {/* Impuestos */}
           <div className={styles.financialCard}>
             <div className={styles.finHeader}>
               <span className={styles.finLabel}>Impuestos (Est.)</span>
@@ -170,16 +250,6 @@ export default function DashboardPage() {
         <div className={styles.chartCard}>
           <div className={styles.chartHeader}>
             <h3 className={styles.chartTitle}>Tendencia de ingresos</h3>
-            <select
-              value={chartFilter}
-              onChange={(e) => setChartFilter(e.target.value)}
-              className={styles.selectInput}
-            >
-              <option value="day">Hoy (por horas)</option>
-              <option value="week">Última semana</option>
-              <option value="month">Este mes</option>
-              <option value="year">Este año</option>
-            </select>
           </div>
           <div style={{ flex: 1, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -216,7 +286,9 @@ export default function DashboardPage() {
 
         <div className={styles.chartCard}>
           <div className={styles.chartHeader}>
-            <h3 className={styles.chartTitle}>Ingresos por categoría (mes)</h3>
+            <h3 className={styles.chartTitle}>
+              Ingresos por categoría (periodo)
+            </h3>
           </div>
           <div style={{ flex: 1, minHeight: 0 }}>
             {stats.ventasPorCategoria && stats.ventasPorCategoria.length > 0 ? (
