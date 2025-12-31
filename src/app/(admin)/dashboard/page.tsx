@@ -9,6 +9,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  Legend,
+  PieChart,
+  Pie,
 } from "recharts";
 import { formatoQuetzal } from "@/lib/utils";
 import {
@@ -19,11 +22,14 @@ import {
   Archive,
   Activity,
   TrendingUp,
+  PieChart as PieIcon,
   Wallet,
   Scale,
   TrendingDown,
 } from "lucide-react";
 import styles from "@/app/(admin)/dashboard/dashboard.module.css";
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -124,7 +130,6 @@ export default function DashboardPage() {
             <div className={styles.finSubtext}>5% SAT (Aprox)</div>
           </div>
 
-          {/* Utilidad Neta (Destacada) */}
           <div className={`${styles.financialCard} ${styles.netProfitCard}`}>
             <div className={styles.finHeader}>
               <span
@@ -154,21 +159,21 @@ export default function DashboardPage() {
       </div>
 
       <div className={styles.chartsGrid}>
-        <div className={styles.chartCard} style={{ gridColumn: "1 / -1" }}>
+        <div className={styles.chartCard}>
           <div className={styles.chartHeader}>
-            <h3 className={styles.chartTitle}>Tendencia de Ingresos</h3>
+            <h3 className={styles.chartTitle}>Tendencia de ingresos</h3>
             <select
               value={chartFilter}
               onChange={(e) => setChartFilter(e.target.value)}
               className={styles.selectInput}
             >
-              <option value="day">Hoy</option>
-              <option value="week">Semana</option>
-              <option value="month">Mes</option>
-              <option value="year">Año</option>
+              <option value="day">Hoy (por horas)</option>
+              <option value="week">Última semana</option>
+              <option value="month">Este mes</option>
+              <option value="year">Este año</option>
             </select>
           </div>
-          <div style={{ height: 250, width: "100%" }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -200,9 +205,56 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
         </div>
+
+        <div className={styles.chartCard}>
+          <div className={styles.chartHeader}>
+            <h3 className={styles.chartTitle}>Ingresos por categoría (mes)</h3>
+          </div>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {stats.ventasPorCategoria && stats.ventasPorCategoria.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.ventasPorCategoria}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {stats.ventasPorCategoria.map(
+                      (entry: any, index: number) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      )
+                    )}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => formatoQuetzal.format(value)}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div
+                style={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#94a3b8",
+                }}
+              >
+                No hay datos de categorías
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* SECCIÓN INFERIOR (Tablas) */}
       <div className={styles.sectionHeader}>
         <h3 className={styles.chartTitle}>Detalle de Inventario</h3>
         <div className={styles.toggleContainer}>
@@ -329,7 +381,6 @@ export default function DashboardPage() {
           </>
         ) : (
           <div className={styles.tableCard} style={{ gridColumn: "1 / -1" }}>
-            {/* Tabla de Huesos (Igual que antes, solo estilo actualizado si es necesario) */}
             <div className={styles.tableHeader}>
               <Archive color="#64748b" size={18} />
               <h3 style={{ margin: 0, color: "#475569", fontSize: "1rem" }}>

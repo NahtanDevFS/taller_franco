@@ -66,6 +66,19 @@ export async function GET() {
       WHERE p.tipo = 'producto'
     `;
 
+    //ventas por categoría del mes actual
+    const ventasPorCategoriaQuery = `
+      SELECT c.nombre, COALESCE(SUM(dv.subtotal), 0) as total
+      FROM detalle_ventas dv
+      JOIN ventas v ON dv.venta_id = v.id
+      JOIN productos p ON dv.producto_id = p.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      WHERE v.estado = 'completada'
+      AND date_trunc('month', v.fecha_venta) = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
+      GROUP BY c.nombre
+      ORDER BY total DESC
+    `;
+
     //stock bajo
     const bajoStockQuery = `
       WITH stock_real_calc AS (
@@ -116,13 +129,14 @@ export async function GET() {
       LIMIT 50
     `;
 
-    const [hoyRes, finanzasRes, invRes, lowStockRes, topRes, huesoRes] =
+    const [hoyRes, finanzasRes, invRes, lowStockRes, topRes, catRes, huesoRes] =
       await Promise.all([
         pool.query(ventasHoyQuery),
         pool.query(finanzasMesQuery),
         pool.query(inventarioQuery),
         pool.query(bajoStockQuery),
         pool.query(topProductosQuery),
+        pool.query(ventasPorCategoriaQuery),
         pool.query(productosSinMovimientoQuery),
       ]);
 
@@ -157,6 +171,10 @@ export async function GET() {
 
       bajoStock: lowStockRes.rows,
       topProductos: topRes.rows,
+      ventasPorCategoria: catRes.rows.map((r) => ({
+        name: r.nombre || "Sin Categoría",
+        value: parseFloat(r.total),
+      })),
       productosSinMovimiento: huesoRes.rows,
     });
   } catch (error: any) {
