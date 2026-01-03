@@ -169,9 +169,9 @@ export async function GET(request: Request) {
     const descuentos = parseFloat(finanzas.total_descuentos);
     const cantidadVentas = parseInt(finanzas.cantidad_ventas || "0");
 
-    // Impuesto 5% pequeño contribuyente sobre el ingreso menos los costos
+    // Impuesto 5% pequeño contribuyente sobre el ingreso
     const TASA_IMPUESTO = 0.05;
-    const impuestosEstimados = (ingresos - costos) * TASA_IMPUESTO;
+    const impuestosEstimados = ingresos * TASA_IMPUESTO;
 
     const utilidadBruta = ingresos - costos;
     const utilidadNeta = utilidadBruta - impuestosEstimados;

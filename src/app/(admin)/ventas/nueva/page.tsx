@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import styles from "./ventas.module.css";
 import { formatoQuetzal, formatUnit } from "@/lib/utils";
@@ -13,6 +13,8 @@ import {
   ArrowLeft,
   Box,
   Droplets,
+  Search,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -49,6 +51,8 @@ function POSContent() {
 
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loadingPay, setLoadingPay] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -56,7 +60,6 @@ function POSContent() {
   const [isPending, setIsPending] = useState(false);
 
   const [scannerOpen, setScannerOpen] = useState(false);
-
   const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
   const [isAddingCustom, setIsAddingCustom] = useState(false);
 
@@ -126,39 +129,28 @@ function POSContent() {
         const requiereSerial = prod.requiere_serial || false;
         const permiteFraccion = prod.permite_fraccion || false;
         const capacidad = parseFloat(attrs.capacidad || prod.capacidad || 1);
-
         const stockEnDb = parseFloat(prod.stock || 0);
 
         let stockMaxDisponible;
-
-        //const fueVendidoComoLiquido = d.datos_extra?.es_liquido;
-
         if (permiteFraccion) {
           const stockBodegaLitros =
             prod.origen === "parcial" ? stockEnDb : stockEnDb * capacidad;
-
           stockMaxDisponible = stockBodegaLitros + parseFloat(d.cantidad);
         } else {
           stockMaxDisponible = stockEnDb + parseFloat(d.cantidad);
         }
-
-        //const esBateria = d.producto?.tiene_garantia || d.producto_es_bateria;
 
         return {
           id: d.producto_id,
           nombre: d.datos_extra?.descripcion_personalizada
             ? d.datos_extra.descripcion_personalizada.toUpperCase()
             : prod.nombre || d.producto_nombre,
-
           codigo_barras: d.codigo_barras,
           precio: parseFloat(d.precio_unitario),
           cantidad: parseFloat(d.cantidad),
           subtotal: parseFloat(d.subtotal),
-
           es_bateria: false,
-
           requiere_serial: requiereSerial || !!d.datos_extra?.numero_serie,
-
           stock_max: stockMaxDisponible,
           datos_extra: d.datos_extra,
         };
@@ -173,28 +165,62 @@ function POSContent() {
     }
   };
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!query.trim()) return;
-
-    const resExact = await fetch(
-      `/api/productos/buscar-codigo?codigo=${query}`
-    );
-    if (resExact.ok) {
-      const producto = await resExact.json();
-      addItemToCart(producto);
-      setQuery("");
+  const searchProducts = useCallback(async (termino: string) => {
+    if (!termino.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    const resSearch = await fetch(`/api/productos?q=${query}&page=1`);
-    const dataSearch = await resSearch.json();
-    if (dataSearch.data && dataSearch.data.length > 0) {
-      setSearchResults(dataSearch.data);
-    } else {
-      toast.error("Producto no encontrado");
+    setIsSearching(true);
+    try {
+      const resExact = await fetch(
+        `/api/productos/buscar-codigo?codigo=${encodeURIComponent(termino)}`
+      );
+      if (resExact.ok) {
+        const producto = await resExact.json();
+        setSearchResults([producto]);
+        setIsSearching(false);
+        return;
+      }
+
+      const resSearch = await fetch(
+        `/api/productos?q=${encodeURIComponent(termino)}&page=1`
+      );
+      const dataSearch = await resSearch.json();
+
+      if (dataSearch.data) {
+        setSearchResults(dataSearch.data);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error("Error buscando:", error);
       setSearchResults([]);
+    } finally {
+      setIsSearching(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const timerId = setTimeout(() => {
+      searchProducts(query);
+    }, 500);
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [query, searchProducts]);
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    searchProducts(query);
   };
 
   const handleScanDetected = async (code: string) => {
@@ -210,15 +236,10 @@ function POSContent() {
     if (resExact.ok) {
       const producto = await resExact.json();
       addItemToCart(producto);
+      setQuery("");
     } else {
       setQuery(code);
-      const resSearch = await fetch(`/api/productos?q=${code}&page=1`);
-      const dataSearch = await resSearch.json();
-      if (dataSearch.data && dataSearch.data.length > 0) {
-        setSearchResults(dataSearch.data);
-      } else {
-        toast.error("Producto no encontrado");
-      }
+      searchProducts(code);
     }
   };
 
@@ -272,6 +293,7 @@ function POSContent() {
 
     addToCartFinal(producto, extraData);
   };
+
   const addToCartFinal = (
     producto: any,
     extraData: any = null,
@@ -285,7 +307,6 @@ function POSContent() {
       );
 
       let stockMaxReal = producto.stock;
-
       if (producto.es_liquido && producto.tipo === "producto") {
         if (producto.origen === "parcial") {
           stockMaxReal = producto.stock;
@@ -344,18 +365,17 @@ function POSContent() {
       toast.success("Agregado");
     setSearchResults([]);
     setQuery("");
+    setIsSearching(false);
     searchInputRef.current?.focus();
   };
 
   const confirmLiquidAdd = () => {
     if (!pendingLiquidProduct || !liquidQuantity) return;
     const qty = parseFloat(liquidQuantity);
-
     if (isNaN(qty) || qty <= 0) {
       toast.error("Cantidad inválida");
       return;
     }
-
     let stockDisponibleLitros = 0;
     if (pendingLiquidProduct.origen === "parcial") {
       stockDisponibleLitros = pendingLiquidProduct.stock;
@@ -363,21 +383,17 @@ function POSContent() {
       stockDisponibleLitros =
         pendingLiquidProduct.stock * pendingLiquidProduct.capacidad;
     }
-
     if (qty > stockDisponibleLitros) {
       toast.error(
         `Solo quedan ${stockDisponibleLitros} ${pendingLiquidProduct.unidad_medida}`
       );
       return;
     }
-
     let precioPorUnidadMedida = pendingLiquidProduct.precio;
-
     if (pendingLiquidProduct.capacidad > 0) {
       precioPorUnidadMedida =
         pendingLiquidProduct.precio / pendingLiquidProduct.capacidad;
     }
-
     const extra = {
       es_liquido: true,
       es_item_parcial: pendingLiquidProduct.origen === "parcial",
@@ -385,7 +401,6 @@ function POSContent() {
       descripcion_unidad: pendingLiquidProduct.unidad_medida,
       unidad_medida: pendingLiquidProduct.unidad_medida,
     };
-
     addToCartFinal(
       {
         ...pendingLiquidProduct,
@@ -395,7 +410,6 @@ function POSContent() {
       extra,
       qty
     );
-
     setLiquidModalOpen(false);
     setPendingLiquidProduct(null);
   };
@@ -428,13 +442,11 @@ function POSContent() {
       const newCart = [...prev];
       const item = newCart[index];
       const newQty = parseFloat((item.cantidad + delta).toFixed(2));
-
       if (newQty < 0.01) return prev;
       if (item.requiere_serial && newQty > 1) {
         toast.warning("Los productos seriales se agregan uno por uno.");
         return prev;
       }
-
       if (newQty > item.stock_max) {
         const unidad = item.datos_extra?.es_liquido
           ? item.datos_extra.descripcion_unidad || "L"
@@ -442,7 +454,6 @@ function POSContent() {
         toast.warning(`Stock insuficiente (Máx: ${item.stock_max} ${unidad})`);
         return prev;
       }
-
       newCart[index] = {
         ...item,
         cantidad: newQty,
@@ -465,21 +476,16 @@ function POSContent() {
       });
       return;
     }
-
     const value = parseFloat(valueStr);
     if (isNaN(value)) return;
-
     setCart((prev) => {
       const item = prev[index];
-
       if (!editId && value > item.stock_max) {
         const unidad = item.datos_extra?.es_liquido
           ? item.datos_extra.descripcion_unidad || "L"
           : "unidades";
         toast.warning(`Máximo disponible: ${item.stock_max} ${unidad}`);
-
         const adjustedQty = item.stock_max;
-
         const newCart = [...prev];
         newCart[index] = {
           ...item,
@@ -488,7 +494,6 @@ function POSContent() {
         };
         return newCart;
       }
-
       const newCart = [...prev];
       newCart[index] = {
         ...item,
@@ -504,9 +509,7 @@ function POSContent() {
       toast.error("Completa descripción y precio");
       return;
     }
-
     setIsAddingCustom(true);
-
     const codigoBuscar =
       customItemData.tipo === "servicio" ? "GEN-SERV" : "GEN-EXT";
     try {
@@ -515,20 +518,13 @@ function POSContent() {
       );
       if (!res.ok) throw new Error("No se encontraron productos genéricos");
       const productoGenerico = await res.json();
-
       const precioVenta = parseFloat(customItemData.precio);
       let costo = 0;
-
-      // Si es producto externo, verificamos si hay precio de compra (costo)
       if (customItemData.tipo === "tercero") {
-        if (customItemData.precio_compra) {
-          costo = parseFloat(customItemData.precio_compra);
-        } else {
-          // Si no se especifica, el costo es igual al precio de venta
-          costo = precioVenta;
-        }
+        costo = customItemData.precio_compra
+          ? parseFloat(customItemData.precio_compra)
+          : precioVenta;
       }
-
       const itemParaCarrito = {
         ...productoGenerico,
         nombre: customItemData.descripcion.toUpperCase(),
@@ -651,8 +647,11 @@ function POSContent() {
               Regresar al Historial
             </button>
           </Link>
-          <form onSubmit={handleSearch} className={styles.searchSection}>
-            <p>Pulsa enter para buscar</p>
+
+          <form onSubmit={handleManualSubmit} className={styles.searchSection}>
+            <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: 5 }}>
+              Escribe para buscar o pulsa enter
+            </p>
             <div className={styles.searchSectionItems}>
               <input
                 ref={searchInputRef}
@@ -661,10 +660,35 @@ function POSContent() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 autoFocus
+                style={{ paddingRight: 40 }}
               />
-              <button type="submit" style={{ display: "none" }}>
-                Buscar
-              </button>
+              {isSearching && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                  }}
+                >
+                  <Loader2
+                    size={18}
+                    className={styles.spin}
+                    style={{ animation: "spin 1s linear infinite" }}
+                    color="#999"
+                  />
+                  <style jsx>{`
+                    @keyframes spin {
+                      0% {
+                        transform: translateY(-50%) rotate(0deg);
+                      }
+                      100% {
+                        transform: translateY(-50%) rotate(360deg);
+                      }
+                    }
+                  `}</style>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setScannerOpen(true)}
@@ -678,6 +702,7 @@ function POSContent() {
               <button
                 onClick={() => setCustomItemModalOpen(true)}
                 className={styles.btnSecondary}
+                type="button"
               >
                 + Agregar Mano de Obra / Externo
               </button>
@@ -702,10 +727,27 @@ function POSContent() {
                 </div>
               </div>
             ))}
-            {searchResults.length === 0 && !query && (
+
+            {searchResults.length === 0 && !query && !isSearching && (
               <div style={{ textAlign: "center", padding: 50, color: "#aaa" }}>
-                <ShoppingCart size={48} style={{ marginBottom: 10 }} />
-                <p>Escanea un producto para empezar</p>
+                <ShoppingCart
+                  size={48}
+                  style={{ marginBottom: 10, opacity: 0.5 }}
+                />
+                <p>Escanea o escribe para buscar</p>
+              </div>
+            )}
+            {isSearching && searchResults.length === 0 && (
+              <div style={{ textAlign: "center", padding: 50, color: "#aaa" }}>
+                <p>Buscando...</p>
+              </div>
+            )}
+
+            {searchResults.length === 0 && query && !isSearching && (
+              <div
+                style={{ textAlign: "center", padding: 50, color: "#ef4444" }}
+              >
+                <p>No se encontraron productos</p>
               </div>
             )}
           </div>
@@ -1025,7 +1067,6 @@ function POSContent() {
                   }
                 />
               </div>
-
               {customItemData.tipo === "tercero" && (
                 <div style={{ marginBottom: 20 }}>
                   <label className={styles.label}>
@@ -1046,7 +1087,6 @@ function POSContent() {
                   />
                 </div>
               )}
-
               <div
                 style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
               >
@@ -1091,8 +1131,6 @@ function POSContent() {
               <p>
                 Producto: <b>{pendingLiquidProduct.nombre}</b>
               </p>
-
-              {/* Bloque informativo de disponibilidad */}
               {pendingLiquidProduct.origen === "parcial" ? (
                 <div
                   style={{
@@ -1124,7 +1162,6 @@ function POSContent() {
                   {pendingLiquidProduct.unidad_medida}
                 </div>
               )}
-
               <div style={{ marginBottom: 10 }}>
                 <label className={styles.label}>
                   Cantidad a Vender ({pendingLiquidProduct.unidad_medida})
@@ -1140,7 +1177,6 @@ function POSContent() {
                   onKeyDown={(e) => e.key === "Enter" && confirmLiquidAdd()}
                 />
               </div>
-
               <div style={{ marginBottom: 20 }}>
                 <div
                   style={{
@@ -1168,7 +1204,6 @@ function POSContent() {
                     Limpiar
                   </button>
                 </div>
-
                 <div
                   style={{
                     display: "grid",
@@ -1177,15 +1212,11 @@ function POSContent() {
                   }}
                 >
                   {[0.25, 0.5, 0.75, 1].map((fraccion) => {
-                    //si es botella abierta (parcial) el 100% es lo que queda en esa botella
-                    //si es producto nuevo el 100% es la capacidad de una botella entera
                     const base =
                       pendingLiquidProduct.origen === "parcial"
                         ? pendingLiquidProduct.stock
                         : pendingLiquidProduct.capacidad;
-
                     const valorASumar = base * fraccion;
-
                     let label = "";
                     if (fraccion === 0.25) label = "+ 1/4";
                     if (fraccion === 0.5) label = "+ 1/2";
@@ -1196,30 +1227,19 @@ function POSContent() {
                         key={fraccion}
                         type="button"
                         onClick={() => {
-                          //obtener valor actual del input (si está vacío es 0)
                           const valorActual = parseFloat(liquidQuantity) || 0;
-
                           const nuevoTotal = valorActual + valorASumar;
-
-                          let stockMaximoDisponible = 0;
-                          if (pendingLiquidProduct.origen === "parcial") {
-                            stockMaximoDisponible = pendingLiquidProduct.stock;
-                          } else {
-                            stockMaximoDisponible =
-                              pendingLiquidProduct.stock *
-                              pendingLiquidProduct.capacidad;
-                          }
-
-                          //validación para no superar stock, usamos una pequeña tolerancia (0.001) para evitar problemas de decimales flotantes
+                          let stockMaximoDisponible =
+                            pendingLiquidProduct.origen === "parcial"
+                              ? pendingLiquidProduct.stock
+                              : pendingLiquidProduct.stock *
+                                pendingLiquidProduct.capacidad;
                           if (nuevoTotal > stockMaximoDisponible + 0.001) {
                             toast.warning(
                               `Cantidad excede disponible. Máx: ${stockMaximoDisponible} ${pendingLiquidProduct.unidad_medida}`
                             );
                             return;
                           }
-
-                          //si pasa la validación, actualizamos acumulando
-                          //parseFloat(toFixed(4)) limpia decimales basura como 3.00000004
                           setLiquidQuantity(
                             parseFloat(nuevoTotal.toFixed(4)).toString()
                           );
@@ -1255,7 +1275,6 @@ function POSContent() {
                   })}
                 </div>
               </div>
-
               <div
                 style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
               >
@@ -1354,6 +1373,7 @@ function POSContent() {
     </>
   );
 }
+
 export default function POSPage() {
   return (
     <Suspense fallback={<div>Cargando editor de ventas...</div>}>
