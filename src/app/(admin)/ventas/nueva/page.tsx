@@ -1091,6 +1091,8 @@ function POSContent() {
               <p>
                 Producto: <b>{pendingLiquidProduct.nombre}</b>
               </p>
+
+              {/* Bloque informativo de disponibilidad */}
               {pendingLiquidProduct.origen === "parcial" ? (
                 <div
                   style={{
@@ -1122,7 +1124,8 @@ function POSContent() {
                   {pendingLiquidProduct.unidad_medida}
                 </div>
               )}
-              <div style={{ marginBottom: 20 }}>
+
+              <div style={{ marginBottom: 10 }}>
                 <label className={styles.label}>
                   Cantidad a Vender ({pendingLiquidProduct.unidad_medida})
                 </label>
@@ -1137,6 +1140,122 @@ function POSContent() {
                   onKeyDown={(e) => e.key === "Enter" && confirmLiquidAdd()}
                 />
               </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 5,
+                  }}
+                >
+                  <label style={{ fontSize: "0.8rem", color: "#666" }}>
+                    Agregar cantidad (+):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setLiquidQuantity("")}
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "#ef4444",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    Limpiar
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 5,
+                  }}
+                >
+                  {[0.25, 0.5, 0.75, 1].map((fraccion) => {
+                    //si es botella abierta (parcial) el 100% es lo que queda en esa botella
+                    //si es producto nuevo el 100% es la capacidad de una botella entera
+                    const base =
+                      pendingLiquidProduct.origen === "parcial"
+                        ? pendingLiquidProduct.stock
+                        : pendingLiquidProduct.capacidad;
+
+                    const valorASumar = base * fraccion;
+
+                    let label = "";
+                    if (fraccion === 0.25) label = "+ 1/4";
+                    if (fraccion === 0.5) label = "+ 1/2";
+                    if (fraccion === 0.75) label = "+ 3/4";
+                    if (fraccion === 1) label = "+ 1";
+                    return (
+                      <button
+                        key={fraccion}
+                        type="button"
+                        onClick={() => {
+                          //obtener valor actual del input (si está vacío es 0)
+                          const valorActual = parseFloat(liquidQuantity) || 0;
+
+                          const nuevoTotal = valorActual + valorASumar;
+
+                          let stockMaximoDisponible = 0;
+                          if (pendingLiquidProduct.origen === "parcial") {
+                            stockMaximoDisponible = pendingLiquidProduct.stock;
+                          } else {
+                            stockMaximoDisponible =
+                              pendingLiquidProduct.stock *
+                              pendingLiquidProduct.capacidad;
+                          }
+
+                          //validación para no superar stock, usamos una pequeña tolerancia (0.001) para evitar problemas de decimales flotantes
+                          if (nuevoTotal > stockMaximoDisponible + 0.001) {
+                            toast.warning(
+                              `Cantidad excede disponible. Máx: ${stockMaximoDisponible} ${pendingLiquidProduct.unidad_medida}`
+                            );
+                            return;
+                          }
+
+                          //si pasa la validación, actualizamos acumulando
+                          //parseFloat(toFixed(4)) limpia decimales basura como 3.00000004
+                          setLiquidQuantity(
+                            parseFloat(nuevoTotal.toFixed(4)).toString()
+                          );
+                        }}
+                        style={{
+                          padding: "8px 4px",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                          backgroundColor: "#f3f4f6",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "4px",
+                          color: "#374151",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          lineHeight: 1.2,
+                        }}
+                        title={`Sumar ${valorASumar} ${pendingLiquidProduct.unidad_medida}`}
+                      >
+                        <span style={{ fontWeight: 600 }}>{label}</span>
+                        <span
+                          style={{
+                            fontSize: "0.65rem",
+                            color: "#6b7280",
+                            marginTop: 2,
+                          }}
+                        >
+                          ({valorASumar} {pendingLiquidProduct.unidad_medida})
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div
                 style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
               >

@@ -7,7 +7,11 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
-import { formatoQuetzal, formatUnit } from "@/lib/utils";
+import {
+  formatoQuetzal,
+  formatoQuetzalCuatroDecimales,
+  formatUnit,
+} from "@/lib/utils";
 
 Font.register({
   family: "Helvetica",
@@ -203,7 +207,9 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
                       : ""}
                   </Text>
                   <View style={styles.colProd}>
-                    <Text>{item.producto_nombre}</Text>
+                    <Text>
+                      {extra.descripcion_personalizada || item.producto_nombre}
+                    </Text>
 
                     {serial && (
                       <Text style={{ fontSize: 7, color: "#444" }}>
@@ -352,7 +358,19 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ venta, tipo }) => {
                   {extra.unidad_medida ? formatUnit(extra.unidad_medida) : ""}
                 </Text>
                 <View style={{ width: "60%" }}>
-                  <Text>{item.producto_nombre}</Text>
+                  <Text>
+                    {extra.descripcion_personalizada || item.producto_nombre}
+                  </Text>
+
+                  {extra.es_liquido && (
+                    <Text style={{ fontSize: 7, color: "#666" }}>
+                      (Precio calculado con alta precisión:{" "}
+                      {formatoQuetzalCuatroDecimales.format(
+                        item.precio_unitario
+                      )}
+                      )
+                    </Text>
+                  )}
 
                   {(serial || garantia > 0) && (
                     <View style={{ marginTop: 2, paddingLeft: 5 }}>

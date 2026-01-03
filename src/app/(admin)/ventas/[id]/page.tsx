@@ -168,7 +168,9 @@ export default function VentaDetallePage() {
                   </td>
                   <td className={styles.tableCell}>
                     <div style={{ fontWeight: 500 }}>
-                      {item.producto_nombre}
+                      {extra.descripcion_personalizada
+                        ? extra.descripcion_personalizada.toUpperCase()
+                        : item.producto_nombre}
                     </div>
 
                     <div

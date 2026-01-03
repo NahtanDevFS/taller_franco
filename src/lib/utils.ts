@@ -1,5 +1,3 @@
-// src/lib/utils.ts
-
 export const calcularPrecioVenta = (costo: number): number => {
   if (!costo || costo < 0) return 0;
 
@@ -22,6 +20,12 @@ export const formatoQuetzal = new Intl.NumberFormat("es-GT", {
   minimumFractionDigits: 2,
 });
 
+export const formatoQuetzalCuatroDecimales = new Intl.NumberFormat("es-GT", {
+  style: "currency",
+  currency: "GTQ",
+  minimumFractionDigits: 4,
+});
+
 export const formatUnit = (unit: string | null | undefined): string => {
   if (!unit) return "";
   const lower = unit.toLowerCase().trim();
@@ -34,6 +38,11 @@ export const formatUnit = (unit: string | null | undefined): string => {
   if (lower.startsWith("caj")) return "Caja";
   if (lower.startsWith("uni")) return "Unid";
   if (lower.startsWith("met")) return "Mts";
+
+  if (lower.startsWith("cen") || lower === "cm") return "cm";
+  if (lower.startsWith("gra") || lower === "gr") return "gr";
+  if (lower.startsWith("kil") || lower === "kg") return "kg";
+  if (lower.startsWith("pul") || lower === "in") return "in"; //pulgadas
 
   return unit.substring(0, 3); //fallback de primeras 3 letras si no conocemos la unidad
 };

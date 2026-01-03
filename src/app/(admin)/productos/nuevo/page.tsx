@@ -505,7 +505,11 @@ function ProductFormContent() {
                   <option value="Mililitros">Mililitros</option>
                   <option value="Galones">Galones</option>
                   <option value="Metros">Metros</option>
+                  <option value="Centimetros">Centímetros</option>
                   <option value="Pies">Pies</option>
+                  <option value="Pulgadas">Pulgadas</option>
+                  <option value="Gramos">Gramos</option>
+                  <option value="Kilogramos">Kilogramos</option>
                   <option value="Libras">Libras</option>
                 </select>
               </div>
