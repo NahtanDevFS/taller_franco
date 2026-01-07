@@ -184,6 +184,9 @@ export async function GET(request: Request) {
 
     const dataLimpia = dataRes.rows.map((p) => ({
       ...p,
+      //generamos una llave única para React
+      //si es parcial, la key será "53-parcial-10", si es normal será "53"
+      uid: p.origen === "parcial" ? `${p.id}-parcial-${p.parcial_id}` : p.id,
       stock: parseFloat(p.stock) || 0,
       precio: parseFloat(p.precio) || 0,
       costo: parseFloat(p.costo) || 0,

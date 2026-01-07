@@ -46,22 +46,20 @@ export default function DashboardPage() {
   );
 
   const [dateRange, setDateRange] = useState({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-      .toISOString()
-      .split("T")[0],
-    end: new Date().toISOString().split("T")[0],
+    start: new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1
+    ).toLocaleDateString("en-CA"),
+    end: new Date().toLocaleDateString("en-CA"),
   });
 
   useEffect(() => {
     if (!dateRange.start || !dateRange.end) return;
 
-    const endDateFormatted = new Date(
-      dateRange.end + "T23:59:59"
-    ).toISOString();
-
     const queryParams = new URLSearchParams({
       startDate: dateRange.start,
-      endDate: endDateFormatted,
+      endDate: dateRange.end,
     }).toString();
 
     fetch(`/api/dashboard/summary?${queryParams}`)

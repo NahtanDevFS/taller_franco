@@ -14,29 +14,27 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   const now = new Date();
-
-  const defaultStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    1
-  ).toISOString();
-
-  const defaultEnd = new Date().toISOString();
+  const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    .toISOString()
+    .split("T")[0];
+  const defaultEnd = now.toISOString().split("T")[0];
 
   const startDate = searchParams.get("startDate") || defaultStart;
-
   const endDate = searchParams.get("endDate") || defaultEnd;
 
   try {
-    //ventas de hoy
+    const dateFilter = `
+      AND fecha_venta AT TIME ZONE 'America/Guatemala' >= $1::date
+      AND fecha_venta AT TIME ZONE 'America/Guatemala' < ($2::date + 1)
+    `;
+
     const ventasHoyQuery = `
       SELECT COALESCE(SUM(total), 0) as total 
       FROM ventas 
       WHERE estado = 'completada' 
-      AND date_trunc('day', fecha_venta) = date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
+      AND date_trunc('day', fecha_venta AT TIME ZONE 'America/Guatemala') = date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/Guatemala')
     `;
 
-    //finanzas según el rango de fecha, ingresos, descuentos, costos, cantidad de ventas, calcula costo usando el histórico si existe (>0), sino usa el actual del producto
     const finanzasQuery = `
       SELECT 
         COALESCE(SUM(v.total), 0) as ingresos_totales,
@@ -60,10 +58,10 @@ export async function GET(request: Request) {
         GROUP BY dv.venta_id
       ) as sub_costos ON v.id = sub_costos.venta_id
       WHERE v.estado = 'completada'
-      AND v.fecha_venta >= $1 AND v.fecha_venta <= $2
+      AND v.fecha_venta AT TIME ZONE 'America/Guatemala' >= $1::date 
+      AND v.fecha_venta AT TIME ZONE 'America/Guatemala' < ($2::date + 1)
     `;
 
-    //valor de inventario actual
     const inventarioQuery = `
       SELECT COALESCE(SUM(
         precio * (
@@ -80,7 +78,6 @@ export async function GET(request: Request) {
       WHERE p.tipo = 'producto'
     `;
 
-    //ventas por categoría según rango de fechas
     const ventasPorCategoriaQuery = `
       SELECT c.nombre, COALESCE(SUM(dv.subtotal), 0) as total
       FROM detalle_ventas dv
@@ -88,12 +85,12 @@ export async function GET(request: Request) {
       JOIN productos p ON dv.producto_id = p.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
       WHERE v.estado = 'completada'
-      AND v.fecha_venta >= $1 AND v.fecha_venta <= $2
+      AND v.fecha_venta AT TIME ZONE 'America/Guatemala' >= $1::date 
+      AND v.fecha_venta AT TIME ZONE 'America/Guatemala' < ($2::date + 1)
       GROUP BY c.nombre
       ORDER BY total DESC
     `;
 
-    //stock bajo
     const bajoStockQuery = `
       WITH stock_real_calc AS (
         SELECT 
@@ -116,7 +113,6 @@ export async function GET(request: Request) {
       LIMIT 20
     `;
 
-    //top 5 productos según rango de fechas
     const topProductosQuery = `
       SELECT 
         p.nombre, 
@@ -132,13 +128,13 @@ export async function GET(request: Request) {
       JOIN ventas v ON dv.venta_id = v.id
       JOIN productos p ON dv.producto_id = p.id
       WHERE v.estado = 'completada' AND p.tipo != 'servicio'
-      AND v.fecha_venta >= $1 AND v.fecha_venta <= $2
+      AND v.fecha_venta AT TIME ZONE 'America/Guatemala' >= $1::date 
+      AND v.fecha_venta AT TIME ZONE 'America/Guatemala' < ($2::date + 1)
       GROUP BY p.id, p.nombre
       ORDER BY cantidad_vendida DESC
       LIMIT 5
     `;
 
-    //productos sin movimiento (+90 días)
     const productosSinMovimientoQuery = `
       SELECT p.id, p.nombre, p.stock, m.nombre as marca, MAX(v.fecha_venta) as ultima_venta
       FROM productos p
@@ -169,7 +165,6 @@ export async function GET(request: Request) {
     const descuentos = parseFloat(finanzas.total_descuentos);
     const cantidadVentas = parseInt(finanzas.cantidad_ventas || "0");
 
-    // Impuesto 5% pequeño contribuyente sobre el ingreso
     const TASA_IMPUESTO = 0.05;
     const impuestosEstimados = ingresos * TASA_IMPUESTO;
 
@@ -184,13 +179,12 @@ export async function GET(request: Request) {
       ...p,
       cantidad_vendida: parseFloat(p.cantidad_vendida)
         .toFixed(1)
-        .replace(/\.0$/, ""), //esto quita decimales si es entero
+        .replace(/\.0$/, ""),
     }));
 
     return NextResponse.json({
       ventasHoy: parseFloat(hoyRes.rows[0].total),
       inventarioTotal: parseFloat(invRes.rows[0].total),
-
       ventasMes: ingresos,
       costosMes: costos,
       impuestosEstimados,
@@ -198,7 +192,6 @@ export async function GET(request: Request) {
       margenBeneficio: margen,
       ticketPromedio,
       totalDescuentos: descuentos,
-
       bajoStock: lowStockRes.rows,
       topProductos: topProductosFormatted,
       ventasPorCategoria: catRes.rows.map((r) => ({

@@ -13,7 +13,6 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
 
-  //recibir fechas del filtro global
   const startDateStr = searchParams.get("startDate");
   const endDateStr = searchParams.get("endDate");
 
@@ -25,42 +24,37 @@ export async function GET(request: Request) {
   const endDate = new Date(endDateStr);
 
   try {
-    //calcular la diferencia en días para decidir la agrupación
     const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    let truncType = "day"; //por defecto
+    let truncType = "day";
 
-    //lógica dinámica de agrupación
     if (diffDays <= 2) {
-      //si el rango es de 1 o 2 días, mostramos detalle por hora
       truncType = "hour";
     } else if (diffDays <= 90) {
-      //hasta 3 meses, mostramos por día
       truncType = "day";
     } else {
-      //más de 3 meses, mostramos por mes para no saturar la gráfica
       truncType = "month";
     }
 
     const sql = `
       SELECT 
-        date_trunc($1, fecha_venta) as fecha, 
+        date_trunc($1, fecha_venta AT TIME ZONE 'America/Guatemala') as fecha, 
         SUM(total) as total 
       FROM ventas 
       WHERE estado = 'completada' 
-      AND fecha_venta >= $2 AND fecha_venta <= $3
+      AND fecha_venta AT TIME ZONE 'America/Guatemala' >= $2::date 
+      AND fecha_venta AT TIME ZONE 'America/Guatemala' < ($3::date + 1)
       GROUP BY fecha 
       ORDER BY fecha ASC
     `;
 
     const res = await pool.query(sql, [truncType, startDateStr, endDateStr]);
 
-    //formatear datos para Recharts
     const data = res.rows.map((row) => ({
       name: formatLabel(new Date(row.fecha), truncType),
       total: parseFloat(row.total),
-      date: row.fecha, //guardamos la fecha original por si acaso
+      date: row.fecha,
     }));
 
     return NextResponse.json(data);
@@ -69,7 +63,6 @@ export async function GET(request: Request) {
   }
 }
 
-//helper para etiquetas bonitas
 function formatLabel(date: Date, type: string) {
   const options: Intl.DateTimeFormatOptions = { timeZone: "America/Guatemala" };
 
@@ -89,7 +82,6 @@ function formatLabel(date: Date, type: string) {
     });
   }
 
-  //para días
   return date.toLocaleDateString("es-GT", {
     ...options,
     weekday: "short",

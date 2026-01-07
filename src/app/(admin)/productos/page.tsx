@@ -189,7 +189,7 @@ export default function ProductosPage() {
           <tbody>
             {productos.length > 0 ? (
               productos.map((p) => (
-                <tr key={p.id}>
+                <tr key={p.uid || p.id}>
                   <td>{p.codigo_barras || "-"}</td>
                   <td>
                     {p.nombre}
