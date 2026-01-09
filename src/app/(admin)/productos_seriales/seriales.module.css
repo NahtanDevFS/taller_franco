@@ -73,6 +73,20 @@
   white-space: nowrap;
 }
 
+.btnSecondary {
+  background: white;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btnSecondary:hover {
+  background: #f8fafc;
+}
+
 .tableContainer {
   background: white;
   border-radius: 8px;
@@ -88,11 +102,11 @@
 }
 
 .table th {
-  background: #f8fafc;
+  background: var(--color-secondary);
   padding: 1rem;
   text-align: left;
   font-weight: 600;
-  color: #475569;
+  color: #f1f5f9;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
 }
@@ -119,6 +133,128 @@
 .statusVendido {
   background: #dbeafe;
   color: #1e40af;
+}
+
+.actionBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.actionBtn:hover {
+  background: #f1f5f9;
+}
+
+.deleteBtn {
+  color: #ef4444;
+}
+
+.dateText {
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.placeholderText {
+  color: #cbd5e1;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalHeader {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.modalBody {
+  padding: 1.5rem;
+}
+
+.modalSubtitle {
+  margin-bottom: 1.5rem;
+  color: #475569;
+  line-height: 1.5;
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.formGroup {
+  margin-bottom: 2rem;
+}
+
+.formGroup label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #334155;
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
 }
 
 @media (max-width: 768px) {

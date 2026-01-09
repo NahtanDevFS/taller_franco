@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     const dynamicStockLogic = `
       CASE 
         WHEN p.requiere_serial = true THEN 
-          (SELECT COUNT(*) FROM existencias_serializadas es WHERE es.producto_id = p.id AND es.estado = 'disponible')
+          (SELECT COUNT(*) FROM existencias_serializadas es WHERE es.producto_id = p.id AND es.estado = 'disponible' AND es.activo = true)
         ELSE p.stock 
       END
     `;

@@ -1,5 +1,3 @@
-/* src/app/(admin)/productos/productos.module.css */
-
 .container {
   padding: 20px;
 }
@@ -26,7 +24,7 @@
   cursor: pointer;
   font-weight: bold;
   transition: background 0.2s;
-  text-decoration: none; /* Importante para el Link */
+  text-decoration: none;
   display: inline-block;
 }
 
@@ -75,7 +73,6 @@
   border-radius: 4px;
 }
 
-/* Filtros */
 .filterBar {
   display: flex;
   gap: 10px;
@@ -140,7 +137,6 @@
   color: #ef4444;
 }
 
-/* Acciones */
 .btnIcon {
   background: none;
   border: none;
@@ -160,7 +156,6 @@
   color: #ef4444;
 }
 
-/* Paginación */
 .pageBtn {
   padding: 8px 15px;
   border-radius: 6px;
