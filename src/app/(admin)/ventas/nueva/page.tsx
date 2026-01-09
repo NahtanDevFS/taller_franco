@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   Box,
   Droplets,
-  Search,
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
@@ -75,6 +74,7 @@ function POSContent() {
     null
   );
   const [liquidQuantity, setLiquidQuantity] = useState("");
+  const [liquidPriceOverride, setLiquidPriceOverride] = useState("");
 
   const [serialModalOpen, setSerialModalOpen] = useState(false);
   const [pendingSerialProduct, setPendingSerialProduct] = useState<any | null>(
@@ -277,6 +277,7 @@ function POSContent() {
     if (producto.es_liquido && producto.tipo === "producto") {
       setPendingLiquidProduct(producto);
       setLiquidQuantity("");
+      setLiquidPriceOverride("");
       setLiquidModalOpen(true);
       return;
     }
@@ -376,6 +377,7 @@ function POSContent() {
       toast.error("Cantidad inválida");
       return;
     }
+
     let stockDisponibleLitros = 0;
     if (pendingLiquidProduct.origen === "parcial") {
       stockDisponibleLitros = pendingLiquidProduct.stock;
@@ -389,11 +391,20 @@ function POSContent() {
       );
       return;
     }
-    let precioPorUnidadMedida = pendingLiquidProduct.precio;
-    if (pendingLiquidProduct.capacidad > 0) {
-      precioPorUnidadMedida =
-        pendingLiquidProduct.precio / pendingLiquidProduct.capacidad;
+
+    let precioParaCarrito = 0;
+
+    if (liquidPriceOverride && parseFloat(liquidPriceOverride) > 0) {
+      const totalManual = parseFloat(liquidPriceOverride);
+      precioParaCarrito = totalManual / qty;
+    } else {
+      precioParaCarrito = pendingLiquidProduct.precio;
+      if (pendingLiquidProduct.capacidad > 0) {
+        precioParaCarrito =
+          pendingLiquidProduct.precio / pendingLiquidProduct.capacidad;
+      }
     }
+
     const extra = {
       es_liquido: true,
       es_item_parcial: pendingLiquidProduct.origen === "parcial",
@@ -401,10 +412,11 @@ function POSContent() {
       descripcion_unidad: pendingLiquidProduct.unidad_medida,
       unidad_medida: pendingLiquidProduct.unidad_medida,
     };
+
     addToCartFinal(
       {
         ...pendingLiquidProduct,
-        precio: precioPorUnidadMedida,
+        precio: precioParaCarrito,
         stock: pendingLiquidProduct.stock,
       },
       extra,
@@ -412,6 +424,7 @@ function POSContent() {
     );
     setLiquidModalOpen(false);
     setPendingLiquidProduct(null);
+    setLiquidPriceOverride(""); // Limpiar
   };
 
   const confirmSerialAdd = () => {
@@ -1177,6 +1190,32 @@ function POSContent() {
                   onKeyDown={(e) => e.key === "Enter" && confirmLiquidAdd()}
                 />
               </div>
+
+              <div style={{ marginBottom: 15 }}>
+                <label className={styles.label}>
+                  Precio Total Opcional (Q){" "}
+                  <span
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "#999",
+                      fontWeight: "normal",
+                    }}
+                  >
+                    (Deja vacío para automático)
+                  </span>
+                </label>
+                <br></br>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.searchInput}
+                  placeholder="Ej: 105.00"
+                  value={liquidPriceOverride}
+                  onChange={(e) => setLiquidPriceOverride(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && confirmLiquidAdd()}
+                />
+              </div>
+
               <div style={{ marginBottom: 20 }}>
                 <div
                   style={{
