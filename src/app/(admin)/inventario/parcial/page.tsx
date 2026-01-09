@@ -104,7 +104,7 @@ export default function InventarioParcialPage() {
                   </td>
                   <td>
                     <span className={styles.badge}>
-                      {parseFloat(item.cantidad_restante).toFixed(2)}{" "}
+                      {parseFloat(item.cantidad_restante).toFixed(4)}{" "}
                       {item.unidad_medida}
                     </span>
                   </td>
