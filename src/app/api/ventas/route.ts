@@ -206,7 +206,8 @@ export async function POST(request: Request) {
             const botellasNecesarias = Math.ceil(item.cantidad / capacidad);
             stockARestar = botellasNecesarias;
             const totalLiquido = botellasNecesarias * capacidad;
-            remanente = totalLiquido - item.cantidad;
+            const rawRemanente = totalLiquido - item.cantidad;
+            remanente = parseFloat(rawRemanente.toFixed(4));
           }
 
           await client.query(
