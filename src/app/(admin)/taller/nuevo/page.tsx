@@ -164,7 +164,7 @@ export default function NuevoIngresoPage() {
                 <label className={styles.label}>
                   Buscar Cliente (Nombre o Tel)
                 </label>
-                <div style={{ position: "relative" }}>
+                <div className={styles.inputContainer}>
                   <input
                     type="text"
                     className={styles.input}
