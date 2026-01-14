@@ -493,7 +493,7 @@ function POSContent() {
     if (isNaN(value)) return;
     setCart((prev) => {
       const item = prev[index];
-      if (!editId && value > item.stock_max) {
+      if (value > item.stock_max) {
         const unidad = item.datos_extra?.es_liquido
           ? item.datos_extra.descripcion_unidad || "L"
           : "unidades";

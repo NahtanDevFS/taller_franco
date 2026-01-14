@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import styles from "./productos.module.css";
-import { formatoQuetzal } from "@/lib/utils";
+import { formatoQuetzal, formatUnit } from "@/lib/utils";
 import { Toaster, toast } from "sonner";
-import { Search, X, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Search, X, Edit, Trash2, AlertTriangle, Info } from "lucide-react";
 import Link from "next/link";
 
 export default function ProductosPage() {
@@ -80,6 +80,16 @@ export default function ProductosPage() {
     setFilterMarca("");
     setLowStockOnly(false);
     setPage(1);
+  };
+
+  const getPrecioRemanente = (p: any) => {
+    const attrs = p.atributos || {};
+    const capacidad = parseFloat(attrs.capacidad || 1);
+    const stockActual = parseFloat(p.stock || 0);
+    if (capacidad > 0) {
+      return (p.precio / capacidad) * stockActual;
+    }
+    return p.precio;
   };
 
   return (
@@ -188,40 +198,94 @@ export default function ProductosPage() {
           </thead>
           <tbody>
             {productos.length > 0 ? (
-              productos.map((p) => (
-                <tr key={p.uid || p.id}>
-                  <td>{p.codigo_barras || "-"}</td>
-                  <td>
-                    {p.nombre}
-                    {p.requiere_serial && (
-                      <span className={styles.badgeBateria}>Serial</span>
-                    )}
-                  </td>
-                  <td>{p.categoria_nombre || "-"}</td>
-                  <td>{p.marca_nombre || "Genérico"}</td>
-                  <td
-                    className={p.stock <= p.stock_minimo ? styles.lowStock : ""}
-                  >
-                    {p.stock}
-                  </td>
-                  <td>{formatoQuetzal.format(p.precio)}</td>
-                  <td>
-                    <Link href={`/productos/nuevo?id=${p.id}`}>
-                      <button className={styles.btnIcon} title="Editar">
-                        <Edit size={18} />
-                      </button>
-                    </Link>
+              productos.map((p) => {
+                const esAbierto = p.nombre.includes("[ABIERTO]");
+                const attrs = p.atributos || {};
+                const unidad = formatUnit(attrs.unidad_medida);
+                const capacidad = parseFloat(attrs.capacidad || 0);
 
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className={`${styles.btnIcon} ${styles.btnDelete}`}
-                      title="Eliminar"
+                return (
+                  <tr key={p.uid || p.id}>
+                    <td>{p.codigo_barras || "-"}</td>
+                    <td>
+                      {p.nombre}
+                      {p.requiere_serial && (
+                        <span className={styles.badgeBateria}>Serial</span>
+                      )}
+                    </td>
+                    <td>{p.categoria_nombre || "-"}</td>
+                    <td>{p.marca_nombre || "Genérico"}</td>
+
+                    <td
+                      className={
+                        p.stock <= p.stock_minimo ? styles.lowStock : ""
+                      }
                     >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))
+                      {esAbierto && capacidad > 0 ? (
+                        <span
+                          style={{
+                            fontWeight: 500,
+                            color: "var(--color-primary)",
+                          }}
+                        >
+                          {parseFloat(p.stock).toFixed(2)} / {capacidad}{" "}
+                          {unidad}
+                        </span>
+                      ) : (
+                        p.stock
+                      )}
+                    </td>
+
+                    <td>
+                      {esAbierto ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            cursor: "pointer",
+                          }}
+                          title={`Precio calculado proporcional al remanente (${parseFloat(
+                            p.stock
+                          ).toFixed(2)} ${unidad})`}
+                          onClick={() =>
+                            toast.info(
+                              `Precio calculado según remanente: ${parseFloat(
+                                p.stock
+                              ).toFixed(2)} ${unidad}`
+                            )
+                          }
+                        >
+                          <span
+                            style={{ color: "#059669", fontWeight: "bold" }}
+                          >
+                            {formatoQuetzal.format(getPrecioRemanente(p))}
+                          </span>
+                          <Info size={14} color="#059669" />
+                        </div>
+                      ) : (
+                        formatoQuetzal.format(p.precio)
+                      )}
+                    </td>
+
+                    <td>
+                      <Link href={`/productos/nuevo?id=${p.id}`}>
+                        <button className={styles.btnIcon} title="Editar">
+                          <Edit size={18} />
+                        </button>
+                      </Link>
+
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className={`${styles.btnIcon} ${styles.btnDelete}`}
+                        title="Eliminar"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td
