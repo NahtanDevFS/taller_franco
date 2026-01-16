@@ -24,7 +24,9 @@ function ProductFormContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [marcas, setMarcas] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
+
   const [isManualMarca, setIsManualMarca] = useState(false);
+  const [isManualCategoria, setIsManualCategoria] = useState(false);
 
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -38,6 +40,7 @@ function ProductFormContent() {
     marca_id: "",
     nueva_marca_nombre: "",
     categoria_id: "",
+    nueva_categoria_nombre: "",
     permite_fraccion: false,
     tiene_garantia: false,
     requiere_serial: false,
@@ -86,6 +89,7 @@ function ProductFormContent() {
             marca_id: data.marca_id ? data.marca_id.toString() : "",
             nueva_marca_nombre: "",
             categoria_id: data.categoria_id ? data.categoria_id.toString() : "",
+            nueva_categoria_nombre: "",
 
             permite_fraccion: data.permite_fraccion ?? data.es_liquido ?? false,
             tiene_garantia: data.tiene_garantia ?? data.es_bateria ?? false,
@@ -115,6 +119,7 @@ function ProductFormContent() {
 
   const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const catId = e.target.value;
+    //lógica legacy para baterías
     const isBatteryCategory = catId === "6";
 
     setFormData((prev) => ({
@@ -288,20 +293,46 @@ function ProductFormContent() {
         </div>
 
         <div className={styles.formGroup}>
-          <label className={styles.label}>Categoría*</label>
-          <select
-            className={styles.select}
-            required
-            value={formData.categoria_id}
-            onChange={handleCategoriaChange}
-          >
-            <option value="">Seleccionar Categoría...</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          <label className={styles.label}>
+            Categoría*
+            <span
+              className={styles.linkBtn}
+              onClick={() => setIsManualCategoria(!isManualCategoria)}
+            >
+              {isManualCategoria
+                ? "(Seleccionar existente)"
+                : "(+ Crear nueva)"}
+            </span>
+          </label>
+
+          {isManualCategoria ? (
+            <input
+              className={styles.input}
+              placeholder="Escribe la nueva categoría..."
+              value={formData.nueva_categoria_nombre}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nueva_categoria_nombre: e.target.value,
+                  categoria_id: "",
+                })
+              }
+            />
+          ) : (
+            <select
+              className={styles.select}
+              required={!isManualCategoria}
+              value={formData.categoria_id}
+              onChange={handleCategoriaChange}
+            >
+              <option value="">Seleccionar Categoría...</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <h3 className={styles.sectionTitle} style={{ marginTop: 20 }}>

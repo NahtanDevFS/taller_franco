@@ -215,6 +215,7 @@ interface ProductBody {
   marca_id?: string | number;
   nueva_marca_nombre?: string;
   categoria_id?: string | number;
+  nueva_categoria_nombre?: string;
   permite_fraccion?: boolean;
   requiere_serial?: boolean;
   tiene_garantia?: boolean;
@@ -249,6 +250,12 @@ export async function POST(request: Request) {
       body.nueva_marca_nombre
     );
 
+    const finalCategoriaId = await resolveCategoriaId(
+      client,
+      productData.categoria_id,
+      body.nueva_categoria_nombre
+    );
+
     const insertSql = `
       INSERT INTO productos 
       (nombre, codigo_barras, precio, costo, stock, stock_minimo, marca_id, categoria_id, 
@@ -265,7 +272,7 @@ export async function POST(request: Request) {
       productData.stock,
       productData.stock_minimo,
       finalMarcaId,
-      productData.categoria_id,
+      finalCategoriaId,
       productData.permite_fraccion,
       productData.requiere_serial,
       productData.tiene_garantia,
@@ -331,7 +338,7 @@ async function resolveMarcaId(
   const nombreNormalizado = nuevaMarcaNombre.trim();
 
   const checkMarca = await client.query(
-    "SELECT id FROM marcas WHERE nombre = $1",
+    "SELECT id FROM marcas WHERE nombre ILIKE $1",
     [nombreNormalizado]
   );
 
@@ -345,4 +352,32 @@ async function resolveMarcaId(
   );
 
   return marcaRes.rows[0].id;
+}
+
+async function resolveCategoriaId(
+  client: any,
+  categoriaId: number | null,
+  nuevaCategoriaNombre?: string
+): Promise<number | null> {
+  if (!nuevaCategoriaNombre?.trim()) {
+    return categoriaId;
+  }
+
+  const nombreNormalizado = nuevaCategoriaNombre.trim();
+
+  const checkCategoria = await client.query(
+    "SELECT id FROM categorias WHERE nombre ILIKE $1",
+    [nombreNormalizado]
+  );
+
+  if (checkCategoria.rows.length > 0) {
+    return checkCategoria.rows[0].id;
+  }
+
+  const categoriaRes = await client.query(
+    "INSERT INTO categorias (nombre) VALUES ($1) RETURNING id",
+    [nombreNormalizado]
+  );
+
+  return categoriaRes.rows[0].id;
 }

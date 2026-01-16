@@ -69,6 +69,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       marca_id,
       nueva_marca_nombre,
       categoria_id,
+      nueva_categoria_nombre,
       permite_fraccion,
       requiere_serial,
       tiene_garantia,
@@ -80,7 +81,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     const finalCodigo =
       codigo_barras && codigo_barras.trim() !== "" ? codigo_barras : null;
 
-    const finalCategoriaId =
+    let finalCategoriaId =
       categoria_id && categoria_id !== "" ? parseInt(categoria_id) : null;
 
     let finalMarcaId = marca_id && marca_id !== "" ? parseInt(marca_id) : null;
@@ -88,18 +89,37 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     await client.query("BEGIN");
 
     if (nueva_marca_nombre && nueva_marca_nombre.trim() !== "") {
+      const nombreMarcaNorm = nueva_marca_nombre.trim();
       const checkMarca = await client.query(
-        "SELECT id FROM marcas WHERE nombre = $1",
-        [nueva_marca_nombre]
+        "SELECT id FROM marcas WHERE nombre ILIKE $1",
+        [nombreMarcaNorm]
       );
       if (checkMarca.rows.length > 0) {
         finalMarcaId = checkMarca.rows[0].id;
       } else {
         const marcaRes = await client.query(
           "INSERT INTO marcas (nombre) VALUES ($1) RETURNING id",
-          [nueva_marca_nombre]
+          [nombreMarcaNorm]
         );
         finalMarcaId = marcaRes.rows[0].id;
+      }
+    }
+
+    if (nueva_categoria_nombre && nueva_categoria_nombre.trim() !== "") {
+      const nombreCatNorm = nueva_categoria_nombre.trim();
+      const checkCat = await client.query(
+        "SELECT id FROM categorias WHERE nombre ILIKE $1",
+        [nombreCatNorm]
+      );
+
+      if (checkCat.rows.length > 0) {
+        finalCategoriaId = checkCat.rows[0].id;
+      } else {
+        const catRes = await client.query(
+          "INSERT INTO categorias (nombre) VALUES ($1) RETURNING id",
+          [nombreCatNorm]
+        );
+        finalCategoriaId = catRes.rows[0].id;
       }
     }
 
