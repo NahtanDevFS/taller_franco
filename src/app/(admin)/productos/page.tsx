@@ -70,7 +70,7 @@ export default function ProductosPage() {
         loading: "Eliminando...",
         success: "Producto eliminado",
         error: "Error al eliminar",
-      }
+      },
     );
   };
 
@@ -206,7 +206,7 @@ export default function ProductosPage() {
 
                 return (
                   <tr key={p.uid || p.id}>
-                    <td>{p.codigo_barras || "-"}</td>
+                    <td className={styles.cellId}>{p.codigo_barras || "-"}</td>
                     <td>
                       {p.nombre}
                       {p.requiere_serial && (
@@ -246,13 +246,13 @@ export default function ProductosPage() {
                             cursor: "pointer",
                           }}
                           title={`Precio calculado proporcional al remanente (${parseFloat(
-                            p.stock
+                            p.stock,
                           ).toFixed(2)} ${unidad})`}
                           onClick={() =>
                             toast.info(
                               `Precio calculado según remanente: ${parseFloat(
-                                p.stock
-                              ).toFixed(2)} ${unidad}`
+                                p.stock,
+                              ).toFixed(2)} ${unidad}`,
                             )
                           }
                         >

@@ -228,7 +228,7 @@ function ProductFormContent() {
 
         <div className={styles.row}>
           <div className={styles.formGroup}>
-            <label className={styles.label}>Código de barras</label>
+            <label className={styles.label}>Código de barras o QR</label>
             <div className={styles.inputGroup}>
               <button
                 type="button"

@@ -85,7 +85,7 @@ export default function HistorialVentasPage() {
         loading: "Procesando pago...",
         success: "Pago registrado exitosamente",
         error: "Error al registrar pago",
-      }
+      },
     );
   };
 
@@ -104,7 +104,7 @@ export default function HistorialVentasPage() {
         loading: "Anulando venta...",
         success: "Venta anulada correctamente",
         error: (err) => `Error: ${err.message}`,
-      }
+      },
     );
   };
 
@@ -196,7 +196,6 @@ export default function HistorialVentasPage() {
             <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
               <th className={stylesHistorial.tableCell}>ID</th>
               <th className={stylesHistorial.tableCell}>Fecha</th>
-              <th className={stylesHistorial.tableCell}>Vendedor</th>
               <th className={stylesHistorial.tableCell}>Cliente</th>
               <th className={stylesHistorial.tableCell}>Total</th>
               <th className={stylesHistorial.tableCell}>Estado</th>
@@ -221,9 +220,6 @@ export default function HistorialVentasPage() {
                   <td className={stylesHistorial.tableCell}>#{v.id}</td>
                   <td className={stylesHistorial.tableCell}>
                     {new Date(v.fecha_venta).toLocaleString()}
-                  </td>
-                  <td className={stylesHistorial.tableCell}>
-                    {v.vendedor_nombre || "N/A"}
                   </td>
                   <td className={stylesHistorial.tableCell}>
                     {v.cliente || "CF"}
