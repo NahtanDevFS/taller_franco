@@ -265,47 +265,68 @@ export default function DashboardPage() {
               Ingresos por categoría (periodo)
             </h3>
           </div>
-          <div style={{ flex: 1, minHeight: 0 }}>
-            {stats.ventasPorCategoria && stats.ventasPorCategoria.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.ventasPorCategoria}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {stats.ventasPorCategoria.map(
-                      (entry: any, index: number) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ),
-                    )}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => formatoQuetzal.format(value)}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div
-                style={{
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#94a3b8",
-                }}
-              >
-                No hay datos de categorías
-              </div>
-            )}
+          <div className={styles.pieChartContainer}>
+            <div className={styles.chartArea}>
+              {stats.ventasPorCategoria &&
+              stats.ventasPorCategoria.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.ventasPorCategoria}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {stats.ventasPorCategoria.map(
+                        (entry: any, index: number) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ),
+                      )}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) =>
+                        formatoQuetzal.format(value)
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div
+                  style={{
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#94a3b8",
+                  }}
+                >
+                  No hay datos de categorías
+                </div>
+              )}
+            </div>
+
+            {stats.ventasPorCategoria &&
+              stats.ventasPorCategoria.length > 0 && (
+                <div className={styles.customLegend}>
+                  {stats.ventasPorCategoria.map((entry: any, index: number) => (
+                    <div key={`legend-${index}`} className={styles.legendItem}>
+                      <div
+                        className={styles.legendColor}
+                        style={{
+                          backgroundColor: COLORS[index % COLORS.length],
+                        }}
+                      />
+                      <span>{entry.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
           </div>
         </div>
       </div>

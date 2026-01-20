@@ -316,6 +316,76 @@
   gap: 0.25rem;
 }
 
+.pieChartContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.chartArea {
+  flex: 1;
+  min-height: 250px;
+  position: relative;
+}
+
+.customLegend {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.customLegend::-webkit-scrollbar {
+  width: 6px;
+}
+
+.customLegend::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.customLegend::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+.customLegend::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #f1f5f9;
+}
+
+.legendColor {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .chartCard {
+    height: auto !important;
+    min-height: 400px;
+  }
+}
+
 @media (max-width: 480px) {
   .chartsGrid,
   .tablesGrid {
