@@ -96,19 +96,19 @@ export default function DashboardPage() {
           color="var(--color-primary)"
         />
         <KpiCard
-          title="Valor Inventario"
+          title="Valor inventario"
           value={formatoQuetzal.format(stats.inventarioTotal)}
           icon={<Package size={24} color="white" />}
           color="#3b82f6"
         />
         <KpiCard
-          title="Total Productos"
+          title="Total productos diferentes"
           value={stats.totalProductos}
           icon={<Layers size={24} color="white" />}
           color="#f97316"
         />
         <KpiCard
-          title="Ticket Promedio (periodo)"
+          title="Ticket promedio (periodo)"
           value={formatoQuetzal.format(stats.ticketPromedio)}
           icon={<Receipt size={24} color="white" />}
           color="#8b5cf6"
