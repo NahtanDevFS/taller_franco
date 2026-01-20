@@ -25,6 +25,7 @@ import {
   Wallet,
   Scale,
   Calendar,
+  Layers,
 } from "lucide-react";
 import styles from "@/app/(admin)/dashboard/dashboard.module.css";
 
@@ -42,14 +43,14 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [bottomView, setBottomView] = useState<"operativo" | "estancado">(
-    "operativo"
+    "operativo",
   );
 
   const [dateRange, setDateRange] = useState({
     start: new Date(
       new Date().getFullYear(),
       new Date().getMonth(),
-      1
+      1,
     ).toLocaleDateString("en-CA"),
     end: new Date().toLocaleDateString("en-CA"),
   });
@@ -99,6 +100,12 @@ export default function DashboardPage() {
           value={formatoQuetzal.format(stats.inventarioTotal)}
           icon={<Package size={24} color="white" />}
           color="#3b82f6"
+        />
+        <KpiCard
+          title="Total Productos"
+          value={stats.totalProductos}
+          icon={<Layers size={24} color="white" />}
+          color="#f97316"
         />
         <KpiCard
           title="Ticket Promedio (periodo)"
@@ -277,7 +284,7 @@ export default function DashboardPage() {
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}
                         />
-                      )
+                      ),
                     )}
                   </Pie>
                   <Tooltip

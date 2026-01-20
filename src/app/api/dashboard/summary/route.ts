@@ -23,11 +23,7 @@ export async function GET(request: Request) {
   const endDate = searchParams.get("endDate") || defaultEnd;
 
   try {
-    const dateFilter = `
-      AND fecha_venta AT TIME ZONE 'America/Guatemala' >= $1::date
-      AND fecha_venta AT TIME ZONE 'America/Guatemala' < ($2::date + 1)
-    `;
-
+    // Queries existentes...
     const ventasHoyQuery = `
       SELECT COALESCE(SUM(total), 0) as total 
       FROM ventas 
@@ -76,6 +72,10 @@ export async function GET(request: Request) {
       ), 0) as total 
       FROM productos p
       WHERE p.tipo = 'producto'
+    `;
+
+    const countProductosQuery = `
+      SELECT COUNT(*) as total FROM productos WHERE tipo = 'producto'
     `;
 
     const ventasPorCategoriaQuery = `
@@ -148,16 +148,25 @@ export async function GET(request: Request) {
       LIMIT 50
     `;
 
-    const [hoyRes, finanzasRes, invRes, lowStockRes, topRes, catRes, huesoRes] =
-      await Promise.all([
-        pool.query(ventasHoyQuery),
-        pool.query(finanzasQuery, [startDate, endDate]),
-        pool.query(inventarioQuery),
-        pool.query(bajoStockQuery),
-        pool.query(topProductosQuery, [startDate, endDate]),
-        pool.query(ventasPorCategoriaQuery, [startDate, endDate]),
-        pool.query(productosSinMovimientoQuery),
-      ]);
+    const [
+      hoyRes,
+      finanzasRes,
+      invRes,
+      lowStockRes,
+      topRes,
+      catRes,
+      huesoRes,
+      countProdRes,
+    ] = await Promise.all([
+      pool.query(ventasHoyQuery),
+      pool.query(finanzasQuery, [startDate, endDate]),
+      pool.query(inventarioQuery),
+      pool.query(bajoStockQuery),
+      pool.query(topProductosQuery, [startDate, endDate]),
+      pool.query(ventasPorCategoriaQuery, [startDate, endDate]),
+      pool.query(productosSinMovimientoQuery),
+      pool.query(countProductosQuery),
+    ]);
 
     const finanzas = finanzasRes.rows[0];
     const ingresos = parseFloat(finanzas.ingresos_totales);
@@ -185,6 +194,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ventasHoy: parseFloat(hoyRes.rows[0].total),
       inventarioTotal: parseFloat(invRes.rows[0].total),
+      totalProductos: parseInt(countProdRes.rows[0].total),
       ventasMes: ingresos,
       costosMes: costos,
       impuestosEstimados,
