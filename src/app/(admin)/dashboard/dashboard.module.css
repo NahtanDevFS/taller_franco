@@ -421,4 +421,46 @@
     width: 100%;
     justify-content: space-between;
   }
+
+  .kpiGrid {
+    display: flex;
+    overflow-x: auto;
+    gap: 15px;
+    padding-bottom: 10px;
+
+    scroll-snap-type: x mandatory;
+
+    scrollbar-width: none;
+  }
+
+  .kpiGrid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .kpiCard {
+    min-width: 85%;
+    flex-shrink: 0;
+    scroll-snap-align: center;
+    margin-bottom: 0;
+  }
+
+  .financialGrid {
+    display: flex;
+    overflow-x: auto;
+    gap: 15px;
+    padding-bottom: 10px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .financialGrid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .financialCard {
+    min-width: 85%;
+    flex-shrink: 0;
+    scroll-snap-align: center;
+    margin-bottom: 0;
+  }
 }
