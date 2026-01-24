@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Barcode,
   Car,
+  NotebookPen,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -53,6 +54,7 @@ export default function Sidebar({
       icon: <PackageOpen size={20} />,
     },
     { name: "Clientes/vehiculos", path: "/taller", icon: <Car size={20} /> },
+    { name: "Notas", path: "/notas", icon: <NotebookPen size={20} /> },
   ];
 
   const handleLogout = async () => {
@@ -64,7 +66,7 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Overlay para cerrar al tocar fuera en móvil */}
+      {/*overlay para cerrar al tocar fuera en móvil */}
       <div
         className={`${styles.overlay} ${isOpen ? styles.open : ""}`}
         onClick={closeMobile}
