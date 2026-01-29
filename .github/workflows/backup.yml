@@ -48,9 +48,11 @@ jobs:
           ls -lh "$FILENAME"
 
       - name: Configure Rclone
+        env:
+          RCLONE_CONF_CONTENT: ${{ secrets.GDRIVE_RCLONE_CONF }}
         run: |
           mkdir -p ~/.config/rclone
-          echo "${{ secrets.GDRIVE_RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+          echo "$RCLONE_CONF_CONTENT" > ~/.config/rclone/rclone.conf
 
       - name: Upload to Google Drive
         run: |
