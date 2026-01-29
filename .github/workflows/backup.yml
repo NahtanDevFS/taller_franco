@@ -1,0 +1,65 @@
+name: "Backup Database to Google Drive"
+
+on:
+  schedule:
+    #se ejecuta todos los días a las 03:00 AM UTC
+    - cron: "0 3 * * *"
+  workflow_dispatch: #esto me permite ejecutarlo manualmente desde github cuando quiera
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    name: Backup and Upload
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install Rclone
+        run: |
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+
+      - name: Create Backup
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          #nombre del archivo con fecha y hora
+          FILENAME="taller_franco_backup_$(date +'%Y-%m-%d_%H-%M').sql.gz"
+
+          #primero exporta esquema y datos con pg_dump
+          #luego, comprime con gzip
+          pg_dump "$DATABASE_URL" \
+            --clean \
+            --if-exists \
+            --quote-all-identifiers \
+            --no-owner \
+            --no-privileges \
+            --encoding=UTF8 \
+            | gzip > "$FILENAME"
+
+          echo "BACKUP_FILENAME=$FILENAME" >> $GITHUB_ENV
+
+          #para verificar que el archivo se creó imprime el tamaño del archivo
+          ls -lh "$FILENAME"
+
+      - name: Configure Rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.GDRIVE_RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+
+      - name: Upload to Google Drive
+        run: |
+          #sube el archivo a la carpeta 'backups_db' (la crea si no existe)
+          rclone copy "$BACKUP_FILENAME" gdrive:backups_db/
+
+          echo "Backup subido exitosamente: $BACKUP_FILENAME"
+
+      - name: Rotate Backups (Optional)
+        run: |
+          #borra backups antiguos en Drive que sean mayores a 30 días
+          rclone delete gdrive:backups_db/ --min-age 30d
