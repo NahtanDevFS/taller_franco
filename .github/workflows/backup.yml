@@ -1,8 +1,7 @@
-name: "Backup Database (Full & Vanilla)"
+name: "Backup Database (Ultimate)"
 
 on:
   schedule:
-    # Se ejecuta todos los días a las 03:00 AM UTC
     - cron: "0 3 * * *"
   workflow_dispatch:
 
@@ -28,46 +27,80 @@ jobs:
         run: |
           sudo -v ; curl https://rclone.org/install.sh | sudo bash
 
-      - name: Create Backups
+      - name: Generate Backups
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -o pipefail
-
-          # Definir fecha para ambos archivos
           DATE_TAG=$(date +'%Y-%m-%d_%H-%M')
-          FILE_FULL="taller_franco_FULL_$DATE_TAG.sql.gz"
-          FILE_VANILLA="taller_franco_PUBLIC_$DATE_TAG.sql.gz"
 
-          echo "--- Generando Backup 1: COMPLETO (Supabase Native) ---"
-          # Este incluye todo: auth, storage, extensions, triggers, etc.
-          # Ideal para restaurar en otro proyecto de Supabase.
+          # Archivos temporales (sin comprimir aún)
+          FILE_SUPABASE_RAW="temp_full.sql"
+          FILE_POSTGRES_RAW="temp_vanilla.sql"
+
+          # Nombres finales
+          FILE_SUPABASE="taller_franco_FULL_$DATE_TAG.sql.gz"
+          FILE_POSTGRES="taller_franco_VANILLA_$DATE_TAG.sql.gz"
+
+          # 1. BACKUP Supabase
+          echo "Generando Full Backup..."
           /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
-            --clean --if-exists --quote-all-identifiers \
-            --no-owner --no-privileges --encoding=UTF8 \
-            | gzip > "$FILE_FULL"
+            --clean --if-exists --quote-all-identifiers --no-owner --no-privileges --encoding=UTF8 \
+            > "$FILE_SUPABASE_RAW"
 
-          echo "Backup Full creado: $(ls -lh $FILE_FULL | awk '{print $5}')"
-
-          echo "--- Generando Backup 2: VANILLA (Solo Public / Portátil) ---"
-          # Este es para migrar a AWS RDS, Docker local, DigitalOcean, etc.
-          # 1. -n public: Solo exporta tu esquema, ignora la basura de supabase.
-          # 2. sed: Borra las llaves foráneas que apuntan a auth.users (porque en un postgres limpio no existen).
-          # 3. sed: Borra políticas RLS que dependen de roles de supabase.
-
+          # 2. BACKUP VANILLA
+          echo "Generando Vanilla Backup..."
+          # Nota: Quitamos --inserts para usar COPY (más rápido), mantenemos -n public
           /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
-            --clean --if-exists --quote-all-identifiers \
-            --no-owner --no-privileges --encoding=UTF8 \
+            --clean --if-exists --quote-all-identifiers --no-owner --no-privileges --encoding=UTF8 \
             -n public \
-            | sed -E '/REFERENCES "auth"."users"/d' \
-            | sed -E '/REFERENCES auth.users/d' \
-            | gzip > "$FILE_VANILLA"
+            > "$FILE_POSTGRES_RAW"
 
-          echo "Backup Vanilla creado: $(ls -lh $FILE_VANILLA | awk '{print $5}')"
+          echo "Ejecutando limpieza profunda..."
+          python3 -c "
+          import re
 
-          #exportar nombres a variables de entorno
-          echo "FILE_FULL=$FILE_FULL" >> $GITHUB_ENV
-          echo "FILE_VANILLA=$FILE_VANILLA" >> $GITHUB_ENV
+          filename = '$FILE_POSTGRES_RAW'
+
+          with open(filename, 'r', encoding='utf-8') as f:
+              sql = f.read()
+
+          # Borrar constraints que apuntan a auth.users
+          sql = re.sub(r'ALTER TABLE ONLY public\.\w+\s+ADD CONSTRAINT[^;]+REFERENCES auth\.users[^;]*;', '', sql, flags=re.DOTALL)
+
+          # Borrar configuraciones específicas de Supabase
+          sql = re.sub(r'^\\restrict.*$', '', sql, flags=re.MULTILINE)
+          sql = re.sub(r'CREATE EXTENSION[^;]*;', '', sql, flags=re.DOTALL)
+          sql = re.sub(r'COMMENT ON EXTENSION[^;]*;', '', sql, flags=re.DOTALL)
+          sql = re.sub(r'CREATE SCHEMA[^;]*;', '', sql, flags=re.DOTALL)
+          sql = re.sub(r'SELECT pg_catalog\.set_config[^;]*;', '', sql, flags=re.DOTALL)
+
+          with open(filename, 'w', encoding='utf-8') as f:
+              f.write(sql)
+          "
+
+          # 4. INYECCIÓN DE HEADER (Modo Réplica + Mocks)
+          echo "Inyectando Headers de Compatibilidad..."
+          echo "-- HEADER COMPATIBILIDAD --" > header.sql
+          echo "SET session_replication_role = 'replica';" >> header.sql
+          echo "CREATE SCHEMA IF NOT EXISTS auth;" >> header.sql
+          echo "CREATE SCHEMA IF NOT EXISTS storage;" >> header.sql
+          echo "CREATE SCHEMA IF NOT EXISTS extensions;" >> header.sql
+          echo "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA extensions;" >> header.sql
+          echo "" >> header.sql
+
+          # Unir Header + SQL Limpio
+          cat header.sql "$FILE_POSTGRES_RAW" > temp_final.sql && mv temp_final.sql "$FILE_POSTGRES_RAW"
+
+          # 5. COMPRESIÓN FINAL
+          echo "Comprimiendo archivos..."
+          gzip -c "$FILE_SUPABASE_RAW" > "$FILE_SUPABASE"
+          gzip -c "$FILE_POSTGRES_RAW" > "$FILE_POSTGRES"
+
+          echo "FILE_SUPABASE=$FILE_SUPABASE" >> $GITHUB_ENV
+          echo "FILE_POSTGRES=$FILE_POSTGRES" >> $GITHUB_ENV
+
+          ls -lh *.gz
 
       - name: Configure Rclone
         env:
@@ -78,13 +111,11 @@ jobs:
 
       - name: Upload to Google Drive
         run: |
-          # Subimos ambos archivos
-          rclone copy "$FILE_FULL" gdrive:backups_db/
-          rclone copy "$FILE_VANILLA" gdrive:backups_db/
+          rclone copy "$FILE_SUPABASE" gdrive:backups_db/
+          rclone copy "$FILE_POSTGRES" gdrive:backups_db/
 
-          echo "Ambos backups subidos exitosamente a Google Drive"
+          echo "Backups subidos exitosamente"
 
       - name: Rotate Backups
         run: |
-          # Borra backups antiguos (>30 días)
           rclone delete gdrive:backups_db/ --min-age 30d
