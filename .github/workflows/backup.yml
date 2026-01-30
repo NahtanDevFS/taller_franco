@@ -1,10 +1,10 @@
-name: "Backup Database to Google Drive"
+name: "Backup Database (Full & Vanilla)"
 
 on:
   schedule:
-    #se ejecuta todos los días a las 03:00 AM UTC
+    # Se ejecuta todos los días a las 03:00 AM UTC
     - cron: "0 3 * * *"
-  workflow_dispatch: #esto me permite ejecutarlo manualmente desde github cuando quiera
+  workflow_dispatch:
 
 jobs:
   backup:
@@ -17,16 +17,10 @@ jobs:
 
       - name: Install PostgreSQL 17 Client
         run: |
-          #instala herramientas necesarias para gestionar repositorios
           sudo apt-get install -y lsb-release curl
-
-          #agrega la llave y el repositorio oficial de PostgreSQL
-          #esto me asegura que tenga acceso a la última versión (17) aunque ubuntu no la traiga
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
           sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-
-          #actualizar e instalar explícitamente el cliente v17
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
 
@@ -34,28 +28,46 @@ jobs:
         run: |
           sudo -v ; curl https://rclone.org/install.sh | sudo bash
 
-      - name: Create Backup
+      - name: Create Backups
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          #esto detiene el script si pg_dump falla, sin esto, se subirá un archivo vacío o corrupto
           set -o pipefail
-          #nombre del archivo con fecha y hora
-          FILENAME="taller_franco_backup_$(date +'%Y-%m-%d_%H-%M').sql.gz"
+
+          # Definir fecha para ambos archivos
+          DATE_TAG=$(date +'%Y-%m-%d_%H-%M')
+          FILE_FULL="taller_franco_FULL_$DATE_TAG.sql.gz"
+          FILE_VANILLA="taller_franco_PUBLIC_$DATE_TAG.sql.gz"
+
+          echo "--- Generando Backup 1: COMPLETO (Supabase Native) ---"
+          # Este incluye todo: auth, storage, extensions, triggers, etc.
+          # Ideal para restaurar en otro proyecto de Supabase.
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
+            --clean --if-exists --quote-all-identifiers \
+            --no-owner --no-privileges --encoding=UTF8 \
+            | gzip > "$FILE_FULL"
+
+          echo "Backup Full creado: $(ls -lh $FILE_FULL | awk '{print $5}')"
+
+          echo "--- Generando Backup 2: VANILLA (Solo Public / Portátil) ---"
+          # Este es para migrar a AWS RDS, Docker local, DigitalOcean, etc.
+          # 1. -n public: Solo exporta tu esquema, ignora la basura de supabase.
+          # 2. sed: Borra las llaves foráneas que apuntan a auth.users (porque en un postgres limpio no existen).
+          # 3. sed: Borra políticas RLS que dependen de roles de supabase.
 
           /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
-            --clean \
-            --if-exists \
-            --quote-all-identifiers \
-            --no-owner \
-            --no-privileges \
-            --encoding=UTF8 \
-            | gzip > "$FILENAME"
+            --clean --if-exists --quote-all-identifiers \
+            --no-owner --no-privileges --encoding=UTF8 \
+            -n public \
+            | sed -E '/REFERENCES "auth"."users"/d' \
+            | sed -E '/REFERENCES auth.users/d' \
+            | gzip > "$FILE_VANILLA"
 
-          echo "BACKUP_FILENAME=$FILENAME" >> $GITHUB_ENV
+          echo "Backup Vanilla creado: $(ls -lh $FILE_VANILLA | awk '{print $5}')"
 
-          #para verificar que el archivo se creó imprime el tamaño del archivo
-          ls -lh "$FILENAME"
+          #exportar nombres a variables de entorno
+          echo "FILE_FULL=$FILE_FULL" >> $GITHUB_ENV
+          echo "FILE_VANILLA=$FILE_VANILLA" >> $GITHUB_ENV
 
       - name: Configure Rclone
         env:
@@ -66,12 +78,13 @@ jobs:
 
       - name: Upload to Google Drive
         run: |
-          #sube el archivo a la carpeta 'backups_db' (la crea si no existe)
-          rclone copy "$BACKUP_FILENAME" gdrive:backups_db/
+          # Subimos ambos archivos
+          rclone copy "$FILE_FULL" gdrive:backups_db/
+          rclone copy "$FILE_VANILLA" gdrive:backups_db/
 
-          echo "Backup subido exitosamente: $BACKUP_FILENAME"
+          echo "Ambos backups subidos exitosamente a Google Drive"
 
-      - name: Rotate Backups (Optional)
+      - name: Rotate Backups
         run: |
-          #borra backups antiguos en Drive que sean mayores a 30 días
+          # Borra backups antiguos (>30 días)
           rclone delete gdrive:backups_db/ --min-age 30d
