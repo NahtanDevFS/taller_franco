@@ -38,19 +38,18 @@ jobs:
           FILE_SUPABASE_RAW="temp_full.sql"
           FILE_POSTGRES_RAW="temp_vanilla.sql"
 
-          # Nombres finales
+          #nombres finales
           FILE_SUPABASE="taller_franco_FULL_$DATE_TAG.sql.gz"
           FILE_POSTGRES="taller_franco_VANILLA_$DATE_TAG.sql.gz"
 
-          # 1. BACKUP Supabase
+          #backup Supabase
           echo "Generando Full Backup..."
           /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
             --clean --if-exists --quote-all-identifiers --no-owner --no-privileges --encoding=UTF8 \
             > "$FILE_SUPABASE_RAW"
 
-          # 2. BACKUP VANILLA
+          #backup vanilla
           echo "Generando Vanilla Backup..."
-          # Nota: Quitamos --inserts para usar COPY (más rápido), mantenemos -n public
           /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
             --clean --if-exists --quote-all-identifiers --no-owner --no-privileges --encoding=UTF8 \
             -n public \
@@ -79,7 +78,7 @@ jobs:
               f.write(sql)
           "
 
-          # 4. INYECCIÓN DE HEADER (Modo Réplica + Mocks)
+          #INYECCIÓN DE HEADER (Modo Réplica + Mocks)
           echo "Inyectando Headers de Compatibilidad..."
           echo "-- HEADER COMPATIBILIDAD --" > header.sql
           echo "SET session_replication_role = 'replica';" >> header.sql
@@ -92,7 +91,7 @@ jobs:
           # Unir Header + SQL Limpio
           cat header.sql "$FILE_POSTGRES_RAW" > temp_final.sql && mv temp_final.sql "$FILE_POSTGRES_RAW"
 
-          # 5. COMPRESIÓN FINAL
+          #COMPRESIÓN FINAL
           echo "Comprimiendo archivos..."
           gzip -c "$FILE_SUPABASE_RAW" > "$FILE_SUPABASE"
           gzip -c "$FILE_POSTGRES_RAW" > "$FILE_POSTGRES"
