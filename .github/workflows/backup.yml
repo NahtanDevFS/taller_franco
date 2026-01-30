@@ -1,4 +1,4 @@
-name: "Backup Database (Ultimate)"
+name: "Backup Database"
 
 on:
   schedule:
